@@ -180,7 +180,6 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
                     onClick={() => setModel(m.name)}
                     className="flex justify-start gap-2 text-sm items-center"
                   >
-                    {m.icon}
                     {m.name}
                   </Button>
                 ))}
