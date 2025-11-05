@@ -65,7 +65,14 @@ const VaultFiles = () => {
 
       const { error: uploadError } = await supabase.storage
         .from("chat-files")
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+          metadata: {
+            originalName: file.name
+          }
+        });
 
       if (uploadError) throw uploadError;
 
@@ -97,9 +104,10 @@ const VaultFiles = () => {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFiles = files.filter(file => {
+    const displayName = file.metadata?.originalName || file.name;
+    return displayName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -129,17 +137,20 @@ const VaultFiles = () => {
                 {searchQuery ? "No files found" : "No files uploaded yet"}
               </p>
             ) : (
-              filteredFiles.map((file, index) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedFile(file)}
-                  className={`flex items-center px-2 py-1 rounded cursor-pointer ${
-                    selectedFile?.name === file.name ? "bg-primary/10 text-primary" : "hover:bg-muted"
-                  }`}
-                >
-                  <span className="mr-2">📄</span> {file.name}
-                </div>
-              ))
+              filteredFiles.map((file, index) => {
+                const displayName = file.metadata?.originalName || file.name;
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedFile(file)}
+                    className={`flex items-center px-2 py-1 rounded cursor-pointer ${
+                      selectedFile?.name === file.name ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                    }`}
+                  >
+                    <span className="mr-2">📄</span> {displayName}
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -154,7 +165,7 @@ const VaultFiles = () => {
         {/* Right Panel - Preview */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">
-            Preview: {selectedFile?.name || "No file selected"}
+            Preview: {selectedFile?.metadata?.originalName || selectedFile?.name || "No file selected"}
           </h2>
 
           {selectedFile ? (
@@ -162,14 +173,14 @@ const VaultFiles = () => {
               <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
                 <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
                   <span className="text-xs text-muted-foreground text-center">
-                    [Thumbnail: {selectedFile.name}]
+                    [Thumbnail: {selectedFile.metadata?.originalName || selectedFile.name}]
                   </span>
                 </div>
               </div>
 
               <div className="space-y-2 text-sm">
                 <p>
-                  <strong>Name:</strong> {selectedFile.name}
+                  <strong>Name:</strong> {selectedFile.metadata?.originalName || selectedFile.name}
                 </p>
                 <p>
                   <strong>Size:</strong> {formatFileSize(selectedFile.metadata?.size || 0)}
