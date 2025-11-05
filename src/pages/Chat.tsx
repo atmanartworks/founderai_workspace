@@ -72,6 +72,13 @@ const Chat = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Auto-create new conversation when navigating to /chat
+  useEffect(() => {
+    if (user && !currentConversation && conversations.length === 0) {
+      createConversation("New Chat");
+    }
+  }, [user, currentConversation, conversations.length, createConversation]);
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {

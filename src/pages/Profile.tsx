@@ -371,6 +371,53 @@ const Profile = () => {
               </Button>
             </form>
           </div>
+
+          <div className="border-t border-border pt-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4 text-destructive">Danger Zone</h3>
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/login");
+                }}
+                className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                Sign Out
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                    try {
+                      // Delete all user data
+                      await supabase.from("conversations").delete().eq("user_id", userId);
+                      await supabase.from("profiles").delete().eq("id", userId);
+                      
+                      // Delete auth user
+                      const { error } = await supabase.auth.admin.deleteUser(userId!);
+                      if (error) throw error;
+
+                      toast({
+                        title: "Success",
+                        description: "Your account has been deleted.",
+                      });
+                      navigate("/signup");
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to delete account. Please contact support.",
+                        variant: "destructive",
+                      });
+                    }
+                  }
+                }}
+                className="w-full"
+              >
+                Delete Account
+              </Button>
+            </div>
+          </div>
         </Card>
       </div>
     </div>
