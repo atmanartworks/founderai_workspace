@@ -242,6 +242,13 @@ const VaultFiles = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - File Explorer */}
         <Card className="p-6">
+          <div className="mb-4 p-3 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">📁 {fileCount} Files</span>
+              <span className="text-sm text-muted-foreground">{formatFileSize(storageUsed)} used</span>
+            </div>
+          </div>
+
           <div className="flex items-center space-x-2 mb-4">
             <input
               type="text"
