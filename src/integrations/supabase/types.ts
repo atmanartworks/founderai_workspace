@@ -100,7 +100,9 @@ export type Database = {
           created_at: string | null
           file_size: number | null
           id: string
+          is_folder: boolean
           original_name: string
+          parent_folder_id: string | null
           storage_path: string
           user_id: string
         }
@@ -109,7 +111,9 @@ export type Database = {
           created_at?: string | null
           file_size?: number | null
           id?: string
+          is_folder?: boolean
           original_name: string
+          parent_folder_id?: string | null
           storage_path: string
           user_id: string
         }
@@ -118,11 +122,21 @@ export type Database = {
           created_at?: string | null
           file_size?: number | null
           id?: string
+          is_folder?: boolean
           original_name?: string
+          parent_folder_id?: string | null
           storage_path?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vault_files_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "vault_files"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

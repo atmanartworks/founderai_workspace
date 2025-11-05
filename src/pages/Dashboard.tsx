@@ -13,6 +13,9 @@ const VaultFiles = () => {
   const [storageUsed, setStorageUsed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch files from database
@@ -25,25 +28,36 @@ const VaultFiles = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("vault_files")
         .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id);
+
+      // Filter by current folder
+      if (currentFolderId) {
+        query = query.eq("parent_folder_id", currentFolderId);
+      } else {
+        query = query.is("parent_folder_id", null);
+      }
+
+      const { data, error } = await query.order("is_folder", { ascending: false }).order("created_at", { ascending: false });
 
       if (error) throw error;
 
       if (data) {
         setFiles(data);
-        setFileCount(data.length);
         
-        // Calculate total storage used
-        const totalBytes = data.reduce((acc, file) => acc + (file.file_size || 0), 0);
-        setStorageUsed(totalBytes);
-
-        // Select first file by default
-        if (data.length > 0 && !selectedFile) {
-          setSelectedFile(data[0]);
+        // Calculate total storage used (only files, not folders)
+        const { data: allFiles } = await supabase
+          .from("vault_files")
+          .select("file_size")
+          .eq("user_id", user.id)
+          .eq("is_folder", false);
+        
+        if (allFiles) {
+          setFileCount(allFiles.length);
+          const totalBytes = allFiles.reduce((acc, file) => acc + (file.file_size || 0), 0);
+          setStorageUsed(totalBytes);
         }
       }
     } catch (error) {
@@ -85,6 +99,8 @@ const VaultFiles = () => {
           original_name: file.name,
           file_size: file.size,
           content_type: file.type,
+          is_folder: false,
+          parent_folder_id: currentFolderId,
         });
 
       if (dbError) throw dbError;
@@ -105,6 +121,99 @@ const VaultFiles = () => {
     }
   };
 
+  const handleCreateFolder = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const folderName = "New Folder";
+
+      const { error } = await supabase
+        .from("vault_files")
+        .insert({
+          user_id: user.id,
+          storage_path: "",
+          original_name: folderName,
+          is_folder: true,
+          parent_folder_id: currentFolderId,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Folder created successfully!",
+      });
+
+      fetchFiles();
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create folder",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRename = async (itemId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from("vault_files")
+        .update({ original_name: newName })
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Renamed successfully!",
+      });
+
+      fetchFiles();
+      setEditingItemId(null);
+    } catch (error) {
+      console.error("Error renaming:", error);
+      toast({
+        title: "Error",
+        description: "Failed to rename",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleItemClick = (item: any) => {
+    if (item.is_folder) {
+      setCurrentFolderId(item.id);
+      setSelectedFile(null);
+    } else {
+      setSelectedFile(item);
+    }
+  };
+
+  const handleItemDoubleClick = (item: any) => {
+    setEditingItemId(item.id);
+    setEditingName(item.original_name);
+  };
+
+  const goBackToParent = async () => {
+    if (!currentFolderId) return;
+
+    try {
+      const { data } = await supabase
+        .from("vault_files")
+        .select("parent_folder_id")
+        .eq("id", currentFolderId)
+        .single();
+
+      if (data) {
+        setCurrentFolderId(data.parent_folder_id);
+      }
+    } catch (error) {
+      console.error("Error navigating back:", error);
+    }
+  };
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -120,6 +229,10 @@ const VaultFiles = () => {
   const filteredFiles = files.filter(file => {
     return file.original_name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  useEffect(() => {
+    fetchFiles();
+  }, [currentFolderId]);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -139,7 +252,16 @@ const VaultFiles = () => {
             />
           </div>
 
-          <div className="text-sm text-muted-foreground mb-3">/ MyVault /</div>
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+            <div className="flex items-center space-x-2">
+              {currentFolderId && (
+                <button onClick={goBackToParent} className="hover:text-foreground">
+                  ← Back
+                </button>
+              )}
+              <span>/ MyVault /</span>
+            </div>
+          </div>
 
           <div className="space-y-1 border border-border rounded-md p-2 h-72 overflow-y-auto">
             {loading ? (
@@ -149,15 +271,33 @@ const VaultFiles = () => {
                 {searchQuery ? "No files found" : "No files uploaded yet"}
               </p>
             ) : (
-              filteredFiles.map((file, index) => (
+              filteredFiles.map((file) => (
                 <div
                   key={file.id}
-                  onClick={() => setSelectedFile(file)}
+                  onClick={() => handleItemClick(file)}
+                  onDoubleClick={() => handleItemDoubleClick(file)}
                   className={`flex items-center px-2 py-1 rounded cursor-pointer ${
                     selectedFile?.id === file.id ? "bg-primary/10 text-primary" : "hover:bg-muted"
                   }`}
                 >
-                  <span className="mr-2">📄</span> {file.original_name}
+                  <span className="mr-2">{file.is_folder ? "📁" : "📄"}</span>
+                  {editingItemId === file.id ? (
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={() => handleRename(file.id, editingName)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRename(file.id, editingName);
+                        if (e.key === "Escape") setEditingItemId(null);
+                      }}
+                      autoFocus
+                      className="flex-1 bg-background border border-border rounded px-1 text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span>{file.original_name}</span>
+                  )}
                 </div>
               ))
             )}
@@ -166,7 +306,8 @@ const VaultFiles = () => {
           {/* Hidden file input */}
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
 
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center gap-2 mt-4">
+            <Button onClick={handleCreateFolder} variant="outline">New Folder</Button>
             <Button onClick={handleUploadClick}>Upload</Button>
           </div>
         </Card>
