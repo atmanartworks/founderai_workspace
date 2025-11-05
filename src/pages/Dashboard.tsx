@@ -12,6 +12,7 @@ const VaultFiles = () => {
   const [fileCount, setFileCount] = useState(0);
   const [storageUsed, setStorageUsed] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch files from Supabase storage
@@ -96,6 +97,10 @@ const VaultFiles = () => {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
+  const filteredFiles = files.filter(file =>
+    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-background p-8">
       <Navbar />
@@ -107,12 +112,11 @@ const VaultFiles = () => {
           <div className="flex items-center space-x-2 mb-4">
             <input
               type="text"
-              placeholder="Search"
-              className="border border-border rounded-md px-2 py-1 text-sm w-full"
+              placeholder="Search files..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border border-border rounded-md px-2 py-1 text-sm w-full bg-background text-foreground"
             />
-            <Button variant="outline" size="sm">
-              Filter
-            </Button>
           </div>
 
           <div className="text-sm text-muted-foreground mb-3">/ MyVault /</div>
@@ -120,10 +124,12 @@ const VaultFiles = () => {
           <div className="space-y-1 border border-border rounded-md p-2 h-72 overflow-y-auto">
             {loading ? (
               <p className="text-sm text-muted-foreground text-center py-4">Loading files...</p>
-            ) : files.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No files uploaded yet</p>
+            ) : filteredFiles.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {searchQuery ? "No files found" : "No files uploaded yet"}
+              </p>
             ) : (
-              files.map((file, index) => (
+              filteredFiles.map((file, index) => (
                 <div
                   key={index}
                   onClick={() => setSelectedFile(file)}
