@@ -1,48 +1,99 @@
 import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const VaultFiles = () => {
-  const [selectedFile, setSelectedFile] = useState({
-    name: "file1.pdf",
-    size: "120 KB",
-    pages: 5,
-    modified: "2025-10-30",
-  });
+  const { toast } = useToast();
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [files, setFiles] = useState<any[]>([]);
+  const [fileCount, setFileCount] = useState(0);
+  const [storageUsed, setStorageUsed] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const files = [
-    "file1.pdf",
-    "file2.pdf",
-    "file3.pdf",
-    "file4.pdf",
-    "file5.pdf",
-    "file6.pdf",
-    "file7.pdf",
-    "file8.pdf",
-    "file9.pdf",
-  ];
+  // Fetch files from Supabase storage
+  useEffect(() => {
+    fetchFiles();
+  }, []);
 
-  // 👇 reference to hidden input element
-  const fileInputRef = useRef(null);
+  const fetchFiles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  // 📁 Handle file selection
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const newFile = {
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(2)} KB`,
-        pages: Math.floor(Math.random() * 10) + 1, // dummy pages for preview
-        modified: new Date().toISOString().split("T")[0],
-      };
-      setSelectedFile(newFile);
+      const { data, error } = await supabase.storage
+        .from("chat-files")
+        .list(user.id, { limit: 100 });
+
+      if (error) throw error;
+
+      if (data) {
+        setFiles(data);
+        setFileCount(data.length);
+        
+        // Calculate total storage used
+        const totalBytes = data.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
+        setStorageUsed(totalBytes);
+
+        // Select first file by default
+        if (data.length > 0 && !selectedFile) {
+          setSelectedFile(data[0]);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 🚀 Open system file manager
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-files")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      toast({
+        title: "Success",
+        description: "File uploaded successfully!",
+      });
+
+      fetchFiles();
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUploadClick = () => {
-    fileInputRef.current.click();
+    fileInputRef.current?.click();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   return (
@@ -67,24 +118,23 @@ const VaultFiles = () => {
           <div className="text-sm text-muted-foreground mb-3">/ MyVault /</div>
 
           <div className="space-y-1 border border-border rounded-md p-2 h-72 overflow-y-auto">
-            {files.map((file, index) => (
-              <div
-                key={index}
-                onClick={() =>
-                  setSelectedFile({
-                    name: file,
-                    size: "000 KB",
-                    pages: 0,
-                    modified: "0000-00-00",
-                  })
-                }
-                className={`flex items-center px-2 py-1 rounded cursor-pointer ${
-                  selectedFile.name === file ? "bg-primary/10 text-primary" : "hover:bg-muted"
-                }`}
-              >
-                <span className="mr-2">📄</span> {file}
-              </div>
-            ))}
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Loading files...</p>
+            ) : files.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No files uploaded yet</p>
+            ) : (
+              files.map((file, index) => (
+                <div
+                  key={index}
+                  onClick={() => setSelectedFile(file)}
+                  className={`flex items-center px-2 py-1 rounded cursor-pointer ${
+                    selectedFile?.name === file.name ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                  }`}
+                >
+                  <span className="mr-2">📄</span> {file.name}
+                </div>
+              ))
+            )}
           </div>
 
           {/* Hidden file input */}
@@ -97,28 +147,38 @@ const VaultFiles = () => {
 
         {/* Right Panel - Preview */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Preview: {selectedFile.name}</h2>
+          <h2 className="text-lg font-semibold mb-4">
+            Preview: {selectedFile?.name || "No file selected"}
+          </h2>
 
-          <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
-            <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
-              <span className="text-xs text-muted-foreground text-center">[Thumbnail: {selectedFile.name}]</span>
+          {selectedFile ? (
+            <>
+              <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
+                <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground text-center">
+                    [Thumbnail: {selectedFile.name}]
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <p>
+                  <strong>Name:</strong> {selectedFile.name}
+                </p>
+                <p>
+                  <strong>Size:</strong> {formatFileSize(selectedFile.metadata?.size || 0)}
+                </p>
+                <p>
+                  <strong>Modified:</strong>{" "}
+                  {new Date(selectedFile.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-muted-foreground py-8">
+              Select a file to preview
             </div>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <p>
-              <strong>Name:</strong> {selectedFile.name}
-            </p>
-            <p>
-              <strong>Size:</strong> {selectedFile.size}
-            </p>
-            <p>
-              <strong>Pages:</strong> {selectedFile.pages}
-            </p>
-            <p>
-              <strong>Modified:</strong> {selectedFile.modified}
-            </p>
-          </div>
+          )}
         </Card>
       </div>
     </div>

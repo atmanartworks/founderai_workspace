@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
+import { StorageInfo } from "@/components/StorageInfo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -78,6 +79,19 @@ const Chat = () => {
       createConversation("New Chat");
     }
   }, [user, currentConversation, conversations.length, createConversation]);
+
+  // Keyboard shortcut: Ctrl/Cmd+K to create new chat
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        handleNewChat();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -362,27 +376,7 @@ const Chat = () => {
         <div className="p-4 h-full overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4">Dashboard</h2>
 
-          <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start text-sm" size="sm">
-              📁 No. of. Files
-            </Button>
-
-            {/* Storage Taken Section */}
-            <div className="p-3 border rounded-lg bg-muted/30">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium flex items-center gap-2">📦 Storage</span>
-                <span className="text-xs text-muted-foreground">0 GB Total</span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div className="bg-blue-500 h-2" style={{ width: `${((0 - 0) / 0) * 0}%` }}></div>
-              </div>
-
-              {/* Storage Info */}
-              <div className="mt-1 text-xs text-muted-foreground text-right">0 GB free of 0 GB</div>
-            </div>
-          </div>
+          <StorageInfo />
         </div>
       </aside>
     </div>

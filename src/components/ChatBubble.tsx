@@ -18,6 +18,10 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
     }
   }) || [];
 
+  const isImage = (filename: string) => {
+    return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
+  };
+
   return (
     <div className={cn("flex gap-3 mb-6 animate-fade-in", isAI ? "flex-row" : "flex-row-reverse")}>
       <div className={cn(
@@ -40,20 +44,43 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
           {files.length > 0 && (
             <div className="mt-3 space-y-2">
               {files.map((file: any, index: number) => (
-                <a
-                  key={index}
-                  href={file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "flex items-center gap-2 p-2 rounded-md transition-colors group",
-                    isAI ? "bg-muted/50 hover:bg-muted" : "bg-white/10 hover:bg-white/20"
-                  )}
-                >
-                  <FileText className={cn("w-4 h-4", isAI ? "text-primary" : "text-white")} />
-                  <span className="text-sm flex-1 truncate">{file.name}</span>
-                  <Download className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
+                isImage(file.name) ? (
+                  <div key={index} className="space-y-2">
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      className="rounded-lg max-w-full h-auto max-h-96 object-contain"
+                    />
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-md transition-colors group text-xs",
+                        isAI ? "bg-muted/50 hover:bg-muted" : "bg-white/10 hover:bg-white/20"
+                      )}
+                    >
+                      <FileText className={cn("w-3 h-3", isAI ? "text-primary" : "text-white")} />
+                      <span className="flex-1 truncate">{file.name}</span>
+                      <Download className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </a>
+                  </div>
+                ) : (
+                  <a
+                    key={index}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-md transition-colors group",
+                      isAI ? "bg-muted/50 hover:bg-muted" : "bg-white/10 hover:bg-white/20"
+                    )}
+                  >
+                    <FileText className={cn("w-4 h-4", isAI ? "text-primary" : "text-white")} />
+                    <span className="text-sm flex-1 truncate">{file.name}</span>
+                    <Download className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                )
               ))}
             </div>
           )}
