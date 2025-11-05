@@ -266,7 +266,7 @@ const VaultFiles = () => {
               </div>
 
               <div className="mt-1 text-xs text-muted-foreground text-right">
-                {usedGB} GB used of {totalGB} GB
+                {formatFileSize(storageUsed)} used of {totalGB} GB
               </div>
             </div>
           </div>
