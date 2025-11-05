@@ -15,7 +15,7 @@ const VaultFiles = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch files from Supabase storage
+  // Fetch files from database
   useEffect(() => {
     fetchFiles();
   }, []);
@@ -25,9 +25,11 @@ const VaultFiles = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase.storage
-        .from("chat-files")
-        .list(user.id, { limit: 100 });
+      const { data, error } = await supabase
+        .from("vault_files")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -36,7 +38,7 @@ const VaultFiles = () => {
         setFileCount(data.length);
         
         // Calculate total storage used
-        const totalBytes = data.reduce((acc, file) => acc + (file.metadata?.size || 0), 0);
+        const totalBytes = data.reduce((acc, file) => acc + (file.file_size || 0), 0);
         setStorageUsed(totalBytes);
 
         // Select first file by default
@@ -63,18 +65,29 @@ const VaultFiles = () => {
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
+      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from("chat-files")
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
           contentType: file.type,
-          metadata: {
-            originalName: file.name
-          }
         });
 
       if (uploadError) throw uploadError;
+
+      // Save metadata to database
+      const { error: dbError } = await supabase
+        .from("vault_files")
+        .insert({
+          user_id: user.id,
+          storage_path: filePath,
+          original_name: file.name,
+          file_size: file.size,
+          content_type: file.type,
+        });
+
+      if (dbError) throw dbError;
 
       toast({
         title: "Success",
@@ -105,8 +118,7 @@ const VaultFiles = () => {
   };
 
   const filteredFiles = files.filter(file => {
-    const displayName = file.metadata?.originalName || file.name;
-    return displayName.toLowerCase().includes(searchQuery.toLowerCase());
+    return file.original_name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
@@ -137,20 +149,17 @@ const VaultFiles = () => {
                 {searchQuery ? "No files found" : "No files uploaded yet"}
               </p>
             ) : (
-              filteredFiles.map((file, index) => {
-                const displayName = file.metadata?.originalName || file.name;
-                return (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedFile(file)}
-                    className={`flex items-center px-2 py-1 rounded cursor-pointer ${
-                      selectedFile?.name === file.name ? "bg-primary/10 text-primary" : "hover:bg-muted"
-                    }`}
-                  >
-                    <span className="mr-2">📄</span> {displayName}
-                  </div>
-                );
-              })
+              filteredFiles.map((file, index) => (
+                <div
+                  key={file.id}
+                  onClick={() => setSelectedFile(file)}
+                  className={`flex items-center px-2 py-1 rounded cursor-pointer ${
+                    selectedFile?.id === file.id ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                  }`}
+                >
+                  <span className="mr-2">📄</span> {file.original_name}
+                </div>
+              ))
             )}
           </div>
 
@@ -165,7 +174,7 @@ const VaultFiles = () => {
         {/* Right Panel - Preview */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">
-            Preview: {selectedFile?.metadata?.originalName || selectedFile?.name || "No file selected"}
+            Preview: {selectedFile?.original_name || "No file selected"}
           </h2>
 
           {selectedFile ? (
@@ -173,20 +182,20 @@ const VaultFiles = () => {
               <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
                 <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
                   <span className="text-xs text-muted-foreground text-center">
-                    [Thumbnail: {selectedFile.metadata?.originalName || selectedFile.name}]
+                    [Thumbnail: {selectedFile.original_name}]
                   </span>
                 </div>
               </div>
 
               <div className="space-y-2 text-sm">
                 <p>
-                  <strong>Name:</strong> {selectedFile.metadata?.originalName || selectedFile.name}
+                  <strong>Name:</strong> {selectedFile.original_name}
                 </p>
                 <p>
-                  <strong>Size:</strong> {formatFileSize(selectedFile.metadata?.size || 0)}
+                  <strong>Size:</strong> {formatFileSize(selectedFile.file_size || 0)}
                 </p>
                 <p>
-                  <strong>Modified:</strong>{" "}
+                  <strong>Uploaded:</strong>{" "}
                   {new Date(selectedFile.created_at).toLocaleDateString()}
                 </p>
               </div>

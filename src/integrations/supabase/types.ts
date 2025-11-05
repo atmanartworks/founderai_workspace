@@ -94,6 +94,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vault_files: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          file_size: number | null
+          id: string
+          original_name: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          file_size?: number | null
+          id?: string
+          original_name: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          file_size?: number | null
+          id?: string
+          original_name?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
