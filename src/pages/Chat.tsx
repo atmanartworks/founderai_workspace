@@ -3,7 +3,21 @@ import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Home, MessageSquare, Settings, User, FileText, Folder, ChevronLeft } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+<div className="flex justify-end p-2">
+  <ThemeToggle />
+</div>
+
+import {
+  Zap,
+  Home,
+  MessageSquare,
+  Settings,
+  Folder,
+  ChevronLeft,
+  LogOut
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Message {
@@ -18,10 +32,10 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      content: "Hello! I'm your AI co-founder. How can I help you build and scale your startup today?",
+      content: "Hello Founder!",
       isAI: true,
-      timestamp: "Just now",
-    },
+      timestamp: "Just now"
+    }
   ]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contextPanelOpen, setContextPanelOpen] = useState(true);
@@ -31,19 +45,19 @@ const Chat = () => {
       id: Date.now().toString(),
       content,
       isAI: false,
-      timestamp: "Just now",
+      timestamp: "Just now"
     };
 
     setMessages([...messages, newMessage]);
 
-    // Simulate AI response
+    // Simulated AI response
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         content:
           "That's a great question! Let me help you with that. Based on current best practices and successful startup strategies, here's what I recommend...",
         isAI: true,
-        timestamp: "Just now",
+        timestamp: "Just now"
       };
       setMessages((prev) => [...prev, aiResponse]);
     }, 1000);
@@ -53,7 +67,9 @@ const Chat = () => {
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Left Sidebar */}
       <aside
-        className={`${sidebarOpen ? "w-64" : "w-0"} lg:w-64 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}
+        className={`${
+          sidebarOpen ? "w-64" : "w-0"
+        } lg:w-64 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}
       >
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 mb-6">
@@ -64,19 +80,26 @@ const Chat = () => {
           </div>
 
           <nav className="space-y-1">
-            {/* <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="w-full justify-start"
               onClick={() => navigate("/")}
             >
               <Home className="w-4 h-4 mr-2" />
               Home
-            </Button> */}
-            <Button variant="ghost" className="w-full justify-start bg-sidebar-accent">
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start bg-sidebar-accent"
+            >
               <MessageSquare className="w-4 h-4 mr-2" />
               Chat
             </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate("/dashboard")}>
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => navigate("/dashboard")}
+            >
               <Folder className="w-4 h-4 mr-2" />
               Vault
             </Button>
@@ -88,7 +111,9 @@ const Chat = () => {
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-3">CHAT HISTORY</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-3">
+            RECENT CHATS
+          </h3>
           <div className="space-y-1">
             <Button variant="ghost" className="w-full justify-start text-sm">
               Product Strategy Discussion
@@ -102,10 +127,15 @@ const Chat = () => {
           </div>
         </div>
 
+        {/* ✅ Logout Button (Navigates to Login Page) */}
         <div className="p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start">
-            <User className="w-4 h-4 mr-2" />
-            <span className="truncate">john@startup.com</span>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-red-600 hover:text-red-700"
+            onClick={() => navigate("/login")}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
           </Button>
         </div>
       </aside>
@@ -115,8 +145,17 @@ const Chat = () => {
         {/* Header */}
         <header className="h-16 border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              <ChevronLeft className={`w-5 h-5 transition-transform ${sidebarOpen ? "" : "rotate-180"}`} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <ChevronLeft
+                className={`w-5 h-5 transition-transform ${
+                  sidebarOpen ? "" : "rotate-180"
+                }`}
+              />
             </Button>
             <h1 className="text-lg font-semibold">New Conversation</h1>
           </div>
@@ -159,24 +198,30 @@ const Chat = () => {
           <h2 className="text-lg font-semibold mb-4">Dashboard</h2>
 
           <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start text-sm" size="sm">
-              📁 No. of. Files
+            <Button
+              variant="outline"
+              className="w-full justify-start text-sm"
+              size="sm"
+            >
+              📁 No. of Files
             </Button>
 
             {/* Storage Taken Section */}
             <div className="p-3 border rounded-lg bg-muted/30">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium flex items-center gap-2">📦 Storage</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  📦 Storage
+                </span>
                 <span className="text-xs text-muted-foreground">0 GB Total</span>
               </div>
 
-              {/* Progress Bar */}
               <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div className="bg-blue-500 h-2" style={{ width: `${((0 - 0) / 0) * 0}%` }}></div>
+                <div className="bg-blue-500 h-2" style={{ width: 100% }}></div>
               </div>
 
-              {/* Storage Info */}
-              <div className="mt-1 text-xs text-muted-foreground text-right">0 GB free of 0 GB</div>
+              <div className="mt-1 text-xs text-muted-foreground text-right">
+                0 GB free of 0 GB
+              </div>
             </div>
           </div>
         </div>
