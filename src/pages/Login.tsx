@@ -124,6 +124,16 @@ const Login = () => {
             />
           </div>
 
+          <div className="flex justify-end mb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/reset-password")}
+              className="text-sm text-primary hover:underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <Button 
             type="submit" 
             className="w-full gradient-primary hover:opacity-90"

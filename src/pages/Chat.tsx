@@ -150,7 +150,11 @@ const Chat = () => {
         </div>
 
         <div className="p-4 border-t border-sidebar-border space-y-2">
-          <Button variant="ghost" className="w-full justify-start">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start"
+            onClick={() => navigate("/profile")}
+          >
             <User className="w-4 h-4 mr-2" />
             <span className="truncate">{user?.email || "Loading..."}</span>
           </Button>
