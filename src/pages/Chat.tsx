@@ -21,6 +21,7 @@ const Chat = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -44,12 +45,24 @@ const Chat = () => {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (!session) {
         navigate("/");
+        return;
+      }
+
+      // Fetch avatar
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile?.avatar_url) {
+        setAvatarUrl(profile.avatar_url);
       }
     });
 
@@ -152,10 +165,14 @@ const Chat = () => {
         <div className="p-4 border-t border-sidebar-border space-y-2">
           <Button 
             variant="ghost" 
-            className="w-full justify-start"
+            className="w-full justify-start gap-2"
             onClick={() => navigate("/profile")}
           >
-            <User className="w-4 h-4 mr-2" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <User className="w-4 h-4" />
+            )}
             <span className="truncate">{user?.email || "Loading..."}</span>
           </Button>
           <Button 

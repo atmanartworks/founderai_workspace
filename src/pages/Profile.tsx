@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, User, Upload, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
@@ -24,13 +25,18 @@ const passwordSchema = z.object({
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
+  const [emailVerified, setEmailVerified] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -42,20 +48,119 @@ const Profile = () => {
 
       setUserId(session.user.id);
       setEmail(session.user.email || "");
+      setEmailVerified(session.user.email_confirmed_at !== null);
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, avatar_url")
         .eq("id", session.user.id)
         .single();
 
       if (profile) {
         setFullName(profile.full_name || "");
+        setAvatarUrl(profile.avatar_url || "");
       }
     };
 
     checkAuth();
   }, [navigate]);
+
+  const handleResendVerification = async () => {
+    setIsResendingVerification(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Verification email sent! Please check your inbox.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send verification email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size must be less than 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingAvatar(true);
+
+    try {
+      // Delete old avatar if exists
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split('/').slice(-2).join('/');
+        await supabase.storage.from('avatars').remove([oldPath]);
+      }
+
+      // Upload new avatar
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/avatar.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast({
+        title: "Success",
+        description: "Avatar updated successfully!",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAvatar(false);
+    }
+  };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,13 +252,64 @@ const Profile = () => {
         </div>
 
         <Card className="p-6 bg-card border-border">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 gradient-primary rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
+          {!emailVerified && (
+            <Alert className="mb-6 bg-yellow-500/10 border-yellow-500/20">
+              <XCircle className="h-4 w-4 text-yellow-500" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-yellow-500">Your email is not verified. Please check your inbox.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                  className="ml-4"
+                >
+                  {isResendingVerification ? "Sending..." : "Resend Email"}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-start gap-6 mb-6">
+            <div className="relative group">
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt="Profile" 
+                  className="w-24 h-24 rounded-full object-cover border-4 border-border"
+                />
+              ) : (
+                <div className="w-24 h-24 gradient-primary rounded-full flex items-center justify-center">
+                  <User className="w-12 h-12 text-white" />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoadingAvatar}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center hover:opacity-90 transition-opacity"
+              >
+                <Upload className="w-4 h-4 text-white" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
             </div>
-            <div>
-              <h2 className="text-xl font-semibold">Account Information</h2>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">Account Information</h2>
+                {emailVerified && (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{email}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isLoadingAvatar ? "Uploading..." : "Click the icon to upload a new avatar"}
+              </p>
             </div>
           </div>
 
