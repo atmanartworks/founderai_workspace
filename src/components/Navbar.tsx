@@ -9,25 +9,22 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Dashboard", path: "/dashboard" },
+    { label: "Vault", path: "/dashboard" },
     { label: "Chat", path: "/chat" },
+    { label: "Logs", path: "/chat" },
   ];
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div 
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2 cursor-pointer group"
-          >
+          <div onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer group">
             <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center group-hover:glow-primary transition-smooth">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-foreground">FounderGPT</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
@@ -42,18 +39,18 @@ export const Navbar = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button 
+            {/* <Button 
               variant="ghost"
               onClick={() => navigate("/chat")}
             >
               Sign In
-            </Button>
-            <Button 
+            </Button> */}
+            {/* <Button 
               onClick={() => navigate("/chat")}
               className="gradient-primary hover:opacity-90 transition-smooth"
             >
               Get Started
-            </Button>
+            </Button> */}
           </div>
 
           {/* Mobile Menu */}
@@ -78,7 +75,7 @@ export const Navbar = () => {
                   </button>
                 ))}
                 <div className="flex flex-col gap-3 pt-6 border-t border-border">
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
                       navigate("/chat");
@@ -88,7 +85,7 @@ export const Navbar = () => {
                   >
                     Sign In
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => {
                       navigate("/chat");
                       setIsOpen(false);
