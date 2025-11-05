@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Paperclip, Mic, Send, X, Bot } from "lucide-react";
-import { FaGoogle, FaRobot } from "react-icons/fa6"; // Gemini & fallback
+// import { FaGoogle, FaRobot } from "react-icons/fa6"; // Gemini & fallback
 import { SiOpenai, SiAnthropic } from "react-icons/si"; // ChatGPT & Claude
 
 import { Button } from "./ui/button";
@@ -114,11 +114,7 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
   };
 
   // --- AI Model List ---
-  const models = [
-    { name: "ChatGPT", icon: <SiOpenai className="w-4 h-4 text-emerald-500" /> },
-    { name: "Gemini", icon: <FaGoogle className="w-4 h-4 text-blue-500" /> },
-    { name: "Claude", icon: <SiAnthropic className="w-4 h-4 text-orange-500" /> },
-  ];
+  const models = [{ name: "ChatGPT" }, { name: "Gemini" }, { name: "Claude" }];
 
   return (
     <div className="border-t border-border bg-background p-4">
