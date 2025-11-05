@@ -2,19 +2,12 @@ import { useState, useEffect } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Zap, Home, MessageSquare, Settings, User, FileText, Folder, ChevronLeft, LogOut } from "lucide-react";
+import { Zap, MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useConversations } from "@/hooks/useConversations";
 import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
-
-interface Message {
-  id: string;
-  content: string;
-  isAI: boolean;
-  timestamp: string;
-}
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -22,16 +15,20 @@ const Chat = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! I'm your AI co-founder. How can I help you build and scale your startup today?",
-      isAI: true,
-      timestamp: "Just now",
-    },
-  ]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contextPanelOpen, setContextPanelOpen] = useState(true);
+
+  const {
+    conversations,
+    currentConversation,
+    messages,
+    loading,
+    createConversation,
+    selectConversation,
+    addMessage,
+    deleteConversation,
+    uploadFile,
+  } = useConversations(user?.id || null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -86,27 +83,51 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      isAI: false,
-      timestamp: "Just now",
-    };
+  const handleSendMessage = async (content: string, files?: File[]) => {
+    if (!user) return;
 
-    setMessages([...messages, newMessage]);
+    // Create conversation if none exists
+    if (!currentConversation) {
+      await createConversation("New Chat");
+    }
+
+    // Upload files if any
+    let fileUrls: string[] = [];
+    if (files && files.length > 0 && currentConversation) {
+      toast({
+        title: "Uploading files...",
+        description: `Uploading ${files.length} file(s)`,
+      });
+
+      const uploadPromises = files.map((file) =>
+        uploadFile(file, currentConversation.id)
+      );
+      const results = await Promise.all(uploadPromises);
+      fileUrls = results.filter((url) => url !== null) as string[];
+    }
+
+    // Add user message
+    await addMessage(content, false, fileUrls);
 
     // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content:
-          "That's a great question! Let me help you with that. Based on current best practices and successful startup strategies, here's what I recommend...",
-        isAI: true,
-        timestamp: "Just now",
-      };
-      setMessages((prev) => [...prev, aiResponse]);
+    setTimeout(async () => {
+      await addMessage(
+        "That's a great question! Let me help you with that. Based on current best practices and successful startup strategies, here's what I recommend...",
+        true
+      );
     }, 1000);
+  };
+
+  const handleNewChat = async () => {
+    await createConversation("New Chat");
+  };
+
+  const handleDeleteConversation = async (
+    e: React.MouseEvent,
+    conversationId: string
+  ) => {
+    e.stopPropagation();
+    await deleteConversation(conversationId);
   };
 
   return (
@@ -148,17 +169,48 @@ const Chat = () => {
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
-          <h3 className="text-xs font-semibold text-muted-foreground mb-3">CHAT HISTORY</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground">CHAT HISTORY</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={handleNewChat}
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
           <div className="space-y-1">
-            <Button variant="ghost" className="w-full justify-start text-sm">
-              Product Strategy Discussion
-            </Button>
-            <Button variant="ghost" className="w-full justify-start text-sm">
-              Go-to-Market Plan
-            </Button>
-            <Button variant="ghost" className="w-full justify-start text-sm">
-              Fundraising Advice
-            </Button>
+            {conversations.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No conversations yet
+              </p>
+            ) : (
+              conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`flex items-center gap-2 group ${
+                    currentConversation?.id === conv.id ? "bg-sidebar-accent" : ""
+                  }`}
+                >
+                  <Button
+                    variant="ghost"
+                    className="flex-1 justify-start text-sm truncate"
+                    onClick={() => selectConversation(conv)}
+                  >
+                    {conv.title}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => handleDeleteConversation(e, conv.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -194,7 +246,9 @@ const Chat = () => {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <ChevronLeft className={`w-5 h-5 transition-transform ${sidebarOpen ? "" : "rotate-180"}`} />
             </Button>
-            <h1 className="text-lg font-semibold">New Conversation</h1>
+            <h1 className="text-lg font-semibold">
+              {currentConversation?.title || "Select a conversation"}
+            </h1>
           </div>
 
           <Button
@@ -210,14 +264,25 @@ const Chat = () => {
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
-            {messages.map((message) => (
-              <ChatBubble
-                key={message.id}
-                message={message.content}
-                isAI={message.isAI}
-                timestamp={message.timestamp}
-              />
-            ))}
+            {loading && messages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">Loading...</div>
+            ) : messages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <h2 className="text-2xl font-semibold mb-2">
+                  Hello! I'm your AI co-founder.
+                </h2>
+                <p>How can I help you build and scale your startup today?</p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <ChatBubble
+                  key={message.id}
+                  message={message.content}
+                  isAI={message.is_ai}
+                  timestamp={new Date(message.created_at).toLocaleString()}
+                />
+              ))
+            )}
           </div>
         </div>
 

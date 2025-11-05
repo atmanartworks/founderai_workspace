@@ -9,7 +9,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { cn } from "@/lib/utils"; // optional utility if you have it in your project
 
 interface ChatComposerProps {
-  onSend: (message: string, files?: File[]) => void;
+  onSend: (message: string, files?: File[]) => Promise<void> | void;
 }
 
 // 👇 Add this at the very top of your file (before the component)
@@ -71,9 +71,9 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
   }, []);
 
   // --- Send handler ---
-  const handleSend = () => {
+  const handleSend = async () => {
     if (message.trim() || files.length > 0) {
-      onSend(message, files);
+      await onSend(message, files);
       setMessage("");
       setFiles([]);
     }
