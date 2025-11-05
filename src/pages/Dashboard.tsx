@@ -226,6 +226,11 @@ const VaultFiles = () => {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
+  const storageLimit = 1024 * 1024 * 1024; // 1 GB limit
+  const usedGB = (storageUsed / (1024 * 1024 * 1024)).toFixed(2);
+  const totalGB = (storageLimit / (1024 * 1024 * 1024)).toFixed(0);
+  const percentUsed = (storageUsed / storageLimit) * 100;
+
   const filteredFiles = files.filter(file => {
     return file.original_name.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -242,10 +247,27 @@ const VaultFiles = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - File Explorer */}
         <Card className="p-6">
-          <div className="mb-4 p-3 border rounded-lg bg-muted/30">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">📁 {fileCount} Files</span>
-              <span className="text-sm text-muted-foreground">{formatFileSize(storageUsed)} used</span>
+          <div className="mb-4 space-y-3">
+            <Button variant="outline" className="w-full justify-start text-sm" size="sm">
+              📁 {fileCount} Files
+            </Button>
+
+            <div className="p-3 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium flex items-center gap-2">📦 Storage</span>
+                <span className="text-xs text-muted-foreground">{totalGB} GB Total</span>
+              </div>
+
+              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-primary h-2 transition-all" 
+                  style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                ></div>
+              </div>
+
+              <div className="mt-1 text-xs text-muted-foreground text-right">
+                {usedGB} GB used of {totalGB} GB
+              </div>
             </div>
           </div>
 
