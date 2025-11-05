@@ -1,185 +1,123 @@
 import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Folder, MessageSquare, TrendingUp, Key, Plus, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
 
-const Dashboard = () => {
-  const navigate = useNavigate();
+const VaultFiles = () => {
+  const [selectedFile, setSelectedFile] = useState({
+    name: "file1.pdf",
+    size: "120 KB",
+    pages: 5,
+    modified: "2025-10-30",
+  });
 
-  const usageData = [
-    { name: "Mon", messages: 45 },
-    { name: "Tue", messages: 52 },
-    { name: "Wed", messages: 38 },
-    { name: "Thu", messages: 65 },
-    { name: "Fri", messages: 48 },
-    { name: "Sat", messages: 30 },
-    { name: "Sun", messages: 25 },
+  const files = [
+    "file1.pdf",
+    "file2.pdf",
+    "file3.pdf",
+    "file4.pdf",
+    "file5.pdf",
+    "file6.pdf",
+    "file7.pdf",
+    "file8.pdf",
+    "file9.pdf",
   ];
 
-  const projects = [
-    { name: "SaaS MVP", status: "Active", lastActive: "2 hours ago" },
-    { name: "Market Research", status: "Active", lastActive: "1 day ago" },
-    { name: "Fundraising Prep", status: "Completed", lastActive: "3 days ago" },
-  ];
+  // 👇 reference to hidden input element
+  const fileInputRef = useRef(null);
 
-  const recentChats = [
-    { title: "Product Strategy Discussion", time: "2 hours ago", messages: 15 },
-    { title: "Go-to-Market Planning", time: "1 day ago", messages: 23 },
-    { title: "Competitive Analysis", time: "2 days ago", messages: 18 },
-  ];
+  // 📁 Handle file selection
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const newFile = {
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(2)} KB`,
+        pages: Math.floor(Math.random() * 10) + 1, // dummy pages for preview
+        modified: new Date().toISOString().split("T")[0],
+      };
+      setSelectedFile(newFile);
+    }
+  };
+
+  // 🚀 Open system file manager
+  const handleUploadClick = () => {
+    fileInputRef.current.click();
+  };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background p-8">
       <Navbar />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">Track your startup journey and insights</p>
-        </div>
+      <h1 className="text-3xl font-bold mb-6">File Explorer</h1>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Active Projects</h3>
-              <Folder className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-3xl font-bold gradient-text">3</p>
-            <p className="text-xs text-muted-foreground mt-2">+1 from last week</p>
-          </Card>
-
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Messages This Week</h3>
-              <MessageSquare className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-3xl font-bold gradient-text">303</p>
-            <p className="text-xs text-muted-foreground mt-2">+12% from last week</p>
-          </Card>
-
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Insights Gained</h3>
-              <TrendingUp className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-3xl font-bold gradient-text">47</p>
-            <p className="text-xs text-muted-foreground mt-2">Across all projects</p>
-          </Card>
-
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Vault Keys</h3>
-              <Key className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-3xl font-bold gradient-text">5</p>
-            <p className="text-xs text-muted-foreground mt-2">Secured secrets</p>
-          </Card>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          {/* Usage Chart */}
-          <Card className="lg:col-span-2 p-6 bg-card border-border">
-            <h2 className="text-lg font-semibold mb-4">Weekly Usage</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={usageData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="messages" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Recent Chats */}
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Recent Chats</h2>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigate("/chat")}
-              >
-                View All
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {recentChats.map((chat, index) => (
-                <div 
-                  key={index}
-                  onClick={() => navigate("/chat")}
-                  className="p-3 rounded-lg bg-background border border-border hover:border-primary/50 transition-smooth cursor-pointer"
-                >
-                  <h3 className="text-sm font-medium mb-1">{chat.title}</h3>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{chat.time}</span>
-                    <span>{chat.messages} messages</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Active Projects */}
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">Active Projects</h2>
-            <Button className="gradient-primary hover:opacity-90 transition-smooth">
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Panel - File Explorer */}
+        <Card className="p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <input
+              type="text"
+              placeholder="Search"
+              className="border border-border rounded-md px-2 py-1 text-sm w-full"
+            />
+            <Button variant="outline" size="sm">
+              Filter
             </Button>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project, index) => (
-              <div 
+
+          <div className="text-sm text-muted-foreground mb-3">/ MyVault /</div>
+
+          <div className="space-y-1 border border-border rounded-md p-2 h-72 overflow-y-auto">
+            {files.map((file, index) => (
+              <div
                 key={index}
-                onClick={() => navigate("/chat")}
-                className="p-4 rounded-xl bg-background border border-border hover:border-primary/50 transition-smooth cursor-pointer group"
+                onClick={() =>
+                  setSelectedFile({
+                    name: file,
+                    size: "000 KB",
+                    pages: 0,
+                    modified: "0000-00-00",
+                  })
+                }
+                className={`flex items-center px-2 py-1 rounded cursor-pointer ${
+                  selectedFile.name === file ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                }`}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center group-hover:glow-primary transition-smooth">
-                    <Folder className="w-5 h-5 text-white" />
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    project.status === "Active" 
-                      ? "bg-primary/10 text-primary" 
-                      : "bg-muted text-muted-foreground"
-                  }`}>
-                    {project.status}
-                  </span>
-                </div>
-                
-                <h3 className="font-semibold mb-1">{project.name}</h3>
-                <p className="text-sm text-muted-foreground mb-3">Last active {project.lastActive}</p>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="w-full group-hover:bg-primary/10 transition-smooth"
-                >
-                  Open Project
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-smooth" />
-                </Button>
+                <span className="mr-2">📄</span> {file}
               </div>
             ))}
+          </div>
+
+          {/* Hidden file input */}
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+
+          <div className="flex justify-center mt-4">
+            <Button onClick={handleUploadClick}>Upload</Button>
+          </div>
+        </Card>
+
+        {/* Right Panel - Preview */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Preview: {selectedFile.name}</h2>
+
+          <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
+            <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
+              <span className="text-xs text-muted-foreground text-center">[Thumbnail: {selectedFile.name}]</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <p>
+              <strong>Name:</strong> {selectedFile.name}
+            </p>
+            <p>
+              <strong>Size:</strong> {selectedFile.size}
+            </p>
+            <p>
+              <strong>Pages:</strong> {selectedFile.pages}
+            </p>
+            <p>
+              <strong>Modified:</strong> {selectedFile.modified}
+            </p>
           </div>
         </Card>
       </div>
@@ -187,4 +125,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default VaultFiles;
