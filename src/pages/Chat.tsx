@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
 import { Button } from "@/components/ui/button";
-import { Zap, MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Zap, MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +19,9 @@ const Chat = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contextPanelOpen, setContextPanelOpen] = useState(true);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   const {
     conversations,
@@ -28,6 +33,7 @@ const Chat = () => {
     addMessage,
     deleteConversation,
     uploadFile,
+    renameConversation,
   } = useConversations(user?.id || null);
 
   useEffect(() => {
@@ -92,7 +98,7 @@ const Chat = () => {
     }
 
     // Upload files if any
-    let fileUrls: string[] = [];
+    let fileData: Array<{ url: string; name: string }> = [];
     if (files && files.length > 0 && currentConversation) {
       toast({
         title: "Uploading files...",
@@ -103,11 +109,11 @@ const Chat = () => {
         uploadFile(file, currentConversation.id)
       );
       const results = await Promise.all(uploadPromises);
-      fileUrls = results.filter((url) => url !== null) as string[];
+      fileData = results.filter((data) => data !== null) as Array<{ url: string; name: string }>;
     }
 
     // Add user message
-    await addMessage(content, false, fileUrls);
+    await addMessage(content, false, fileData.map(f => JSON.stringify(f)));
 
     // Simulate AI response
     setTimeout(async () => {
@@ -128,6 +134,22 @@ const Chat = () => {
   ) => {
     e.stopPropagation();
     await deleteConversation(conversationId);
+  };
+
+  const handleRenameClick = (e: React.MouseEvent, conversationId: string, currentTitle: string) => {
+    e.stopPropagation();
+    setRenamingConversationId(conversationId);
+    setNewTitle(currentTitle);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (renamingConversationId && newTitle.trim()) {
+      await renameConversation(renamingConversationId, newTitle.trim());
+      setRenameDialogOpen(false);
+      setRenamingConversationId(null);
+      setNewTitle("");
+    }
   };
 
   return (
@@ -189,8 +211,8 @@ const Chat = () => {
               conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  className={`flex items-center gap-2 group ${
-                    currentConversation?.id === conv.id ? "bg-sidebar-accent" : ""
+                  className={`flex items-center gap-1 group ${
+                    currentConversation?.id === conv.id ? "bg-sidebar-accent rounded" : ""
                   }`}
                 >
                   <Button
@@ -204,9 +226,17 @@ const Chat = () => {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => handleRenameClick(e, conv.id, conv.title)}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => handleDeleteConversation(e, conv.id)}
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 className="w-3 h-3 text-destructive" />
                   </Button>
                 </div>
               ))
@@ -280,6 +310,7 @@ const Chat = () => {
                   message={message.content}
                   isAI={message.is_ai}
                   timestamp={new Date(message.created_at).toLocaleString()}
+                  fileUrls={message.file_urls}
                 />
               ))
             )}
@@ -289,6 +320,31 @@ const Chat = () => {
         {/* Chat Composer */}
         <ChatComposer onSend={handleSendMessage} />
       </main>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Conversation</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Enter new title"
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                handleRenameSubmit();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSubmit}>Rename</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Right Context Panel */}
       <aside

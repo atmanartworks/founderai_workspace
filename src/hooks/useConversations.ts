@@ -18,6 +18,12 @@ export interface Message {
   file_urls?: string[];
 }
 
+interface MessageInsert {
+  conversation_id: string;
+  content: string;
+  is_ai: boolean;
+}
+
 export const useConversations = (userId: string | null) => {
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -117,21 +123,24 @@ export const useConversations = (userId: string | null) => {
     }
 
     try {
+      // Create message data object
+      const messageData: any = {
+        conversation_id: currentConversation!.id,
+        content,
+        is_ai: isAI,
+      };
+
       const { data, error } = await supabase
         .from("messages")
-        .insert([
-          {
-            conversation_id: currentConversation!.id,
-            content,
-            is_ai: isAI,
-          },
-        ])
+        .insert([messageData])
         .select()
         .single();
 
       if (error) throw error;
 
-      setMessages([...messages, data]);
+      // Add file URLs to the message object for display
+      const messageWithFiles = { ...data, file_urls: fileUrls };
+      setMessages([...messages, messageWithFiles]);
       
       // Update conversation's updated_at
       await supabase
@@ -139,7 +148,7 @@ export const useConversations = (userId: string | null) => {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", currentConversation!.id);
 
-      return data;
+      return messageWithFiles;
     } catch (error: any) {
       console.error("Error adding message:", error);
       toast({
@@ -205,7 +214,7 @@ export const useConversations = (userId: string | null) => {
         .from("chat-files")
         .getPublicUrl(`${userId}/${fileName}`);
 
-      return publicUrl;
+      return { url: publicUrl, name: file.name };
     } catch (error: any) {
       console.error("Error uploading file:", error);
       toast({
@@ -214,6 +223,40 @@ export const useConversations = (userId: string | null) => {
         variant: "destructive",
       });
       return null;
+    }
+  };
+
+  // Rename conversation
+  const renameConversation = async (conversationId: string, newTitle: string) => {
+    try {
+      const { error } = await supabase
+        .from("conversations")
+        .update({ title: newTitle })
+        .eq("id", conversationId);
+
+      if (error) throw error;
+
+      setConversations(
+        conversations.map((c) =>
+          c.id === conversationId ? { ...c, title: newTitle } : c
+        )
+      );
+
+      if (currentConversation?.id === conversationId) {
+        setCurrentConversation({ ...currentConversation, title: newTitle });
+      }
+
+      toast({
+        title: "Success",
+        description: "Conversation renamed",
+      });
+    } catch (error: any) {
+      console.error("Error renaming conversation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to rename conversation",
+        variant: "destructive",
+      });
     }
   };
 
@@ -227,5 +270,6 @@ export const useConversations = (userId: string | null) => {
     addMessage,
     deleteConversation,
     uploadFile,
+    renameConversation,
   };
 };
