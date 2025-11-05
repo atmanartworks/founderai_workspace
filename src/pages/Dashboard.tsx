@@ -47,17 +47,27 @@ const VaultFiles = () => {
       if (data) {
         setFiles(data);
         
-        // Calculate total storage used (only files, not folders)
+        // Count files from DB (exclude folders)
         const { data: allFiles } = await supabase
           .from("vault_files")
-          .select("file_size")
+          .select("file_size, is_folder")
           .eq("user_id", user.id)
           .eq("is_folder", false);
         
         if (allFiles) {
           setFileCount(allFiles.length);
-          const totalBytes = allFiles.reduce((acc, file) => acc + (file.file_size || 0), 0);
-          setStorageUsed(totalBytes);
+          const totalBytesDB = allFiles.reduce((acc, file) => acc + (file.file_size || 0), 0);
+          setStorageUsed(totalBytesDB);
+        }
+
+        // Prefer storage bucket usage as source of truth
+        const { data: storageItems, error: storageError } = await supabase.storage
+          .from("chat-files")
+          .list(user.id, { limit: 1000 });
+
+        if (!storageError && storageItems) {
+          const totalBytesBucket = storageItems.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
+          setStorageUsed(totalBytesBucket);
         }
       }
     } catch (error) {
