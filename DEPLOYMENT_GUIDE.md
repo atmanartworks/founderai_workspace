@@ -248,6 +248,18 @@ app.add_middleware(
 - Verify `package.json` has correct build script
 - Ensure all dependencies are in `package.json`
 - Check Node.js version compatibility
+- Test build locally first: `npm run build`
+- See **[VERCEL_TROUBLESHOOTING.md](./VERCEL_TROUBLESHOOTING.md)** for detailed fixes
+
+### Issue: "404: DEPLOYMENT_NOT_FOUND" Error
+
+**Solutions:**
+- Check deployment status in Vercel dashboard
+- Review build logs for errors
+- Verify environment variables are set
+- Clear build cache and redeploy
+- Ensure `vercel.json` is in root directory
+- See **[VERCEL_TROUBLESHOOTING.md](./VERCEL_TROUBLESHOOTING.md)** for complete troubleshooting guide
 
 ### Issue: Backend Not Starting on Render
 
