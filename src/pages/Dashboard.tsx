@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { FileText, File, Image as ImageIcon, Trash2, Eye } from "lucide-react";
+import { ragApi } from "@/services/ragApi";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const VaultFiles = () => {
   const { toast } = useToast();
@@ -16,6 +19,11 @@ const VaultFiles = () => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [filePreviewContent, setFilePreviewContent] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch files from database
@@ -59,16 +67,6 @@ const VaultFiles = () => {
           const totalBytesDB = allFiles.reduce((acc, file) => acc + (file.file_size || 0), 0);
           setStorageUsed(totalBytesDB);
         }
-
-        // Prefer storage bucket usage as source of truth
-        const { data: storageItems, error: storageError } = await supabase.storage
-          .from("chat-files")
-          .list(user.id, { limit: 1000 });
-
-        if (!storageError && storageItems) {
-          const totalBytesBucket = storageItems.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
-          setStorageUsed(totalBytesBucket);
-        }
       }
     } catch (error) {
       console.error("Error fetching files:", error);
@@ -85,47 +83,124 @@ const VaultFiles = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      toast({
+        title: "Uploading...",
+        description: "Please wait while we upload and process your file.",
+      });
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("chat-files")
+      // Check if filename already exists
+      const { data: existingFiles } = await supabase
+        .from("vault_files")
+        .select("original_name")
+        .eq("user_id", user.id)
+        .eq("is_folder", false);
+
+      // Generate unique filename if duplicate
+      let finalFileName = file.name;
+      if (existingFiles) {
+        const existingNames = existingFiles.map(f => f.original_name);
+        
+        if (existingNames.includes(finalFileName)) {
+          const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+          const fileExt = file.name.substring(file.name.lastIndexOf('.'));
+          
+          let counter = 1;
+          while (existingNames.includes(finalFileName)) {
+            finalFileName = `${fileNameWithoutExt} duplicate ${counter}${fileExt}`;
+            counter++;
+          }
+        }
+      }
+
+      const fileExt = finalFileName.split(".").pop();
+      const randomFileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${randomFileName}`;
+
+      console.log('Uploading file:', finalFileName, 'to path:', filePath);
+
+      // Upload to storage (using 'vault' bucket to match backend)
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from("vault")
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false,
           contentType: file.type,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+      
+      console.log('Upload successful:', uploadData);
 
-      // Save metadata to database
-      const { error: dbError } = await supabase
+      // Save metadata to database with the final (possibly renamed) filename
+      const { data: insertedData, error: dbError } = await supabase
         .from("vault_files")
         .insert({
           user_id: user.id,
           storage_path: filePath,
-          original_name: file.name,
+          original_name: finalFileName,  // Use the renamed filename
           file_size: file.size,
           content_type: file.type,
           is_folder: false,
           parent_folder_id: currentFolderId,
-        });
+        })
+        .select();
 
       if (dbError) throw dbError;
 
-      toast({
-        title: "Success",
-        description: "File uploaded successfully!",
-      });
+      const vaultId = insertedData?.[0]?.id;
+
+      // Check if file should be embedded (text-based files)
+      const embeddableExtensions = ['txt', 'pdf', 'docx', 'md', 'html', 'json'];
+      if (vaultId && embeddableExtensions.includes(fileExt?.toLowerCase() || '')) {
+        toast({
+          title: "Processing...",
+          description: "Extracting text and creating embeddings.",
+        });
+
+        // Small delay to ensure storage upload is complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Call embedding API using ragApi service
+        try {
+          const result = await ragApi.embedDocument(vaultId);
+          console.log('Embedding result:', result);
+          
+          const uploadMsg = finalFileName !== file.name 
+            ? `File renamed to "${finalFileName}" and processed! Created ${result.chunks || 0} chunks.`
+            : `File processed! Created ${result.chunks || 0} chunks.`;
+            
+          toast({
+            title: "Success!",
+            description: uploadMsg,
+          });
+        } catch (embedError: any) {
+          console.error('Error calling embedding API:', embedError);
+          toast({
+            title: "Warning",
+            description: `File uploaded but embedding failed: ${embedError.message}`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        const uploadMsg = finalFileName !== file.name 
+          ? `File renamed to "${finalFileName}" and uploaded successfully!`
+          : "File uploaded successfully!";
+          
+        toast({
+          title: "Success",
+          description: uploadMsg,
+        });
+      }
 
       fetchFiles();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading file:", error);
       toast({
         title: "Error",
-        description: "Failed to upload file",
+        description: error.message || "Failed to upload file",
         variant: "destructive",
       });
     }
@@ -192,12 +267,101 @@ const VaultFiles = () => {
     }
   };
 
-  const handleItemClick = (item: any) => {
+  const handleItemClick = async (item: any) => {
     if (item.is_folder) {
       setCurrentFolderId(item.id);
       setSelectedFile(null);
+      setFilePreviewUrl(null);
+      setFilePreviewContent(null);
     } else {
       setSelectedFile(item);
+      await loadFilePreview(item);
+    }
+  };
+
+  const loadFilePreview = async (file: any) => {
+    setPreviewLoading(true);
+    setFilePreviewUrl(null);
+    setFilePreviewContent(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get file extension
+      const ext = file.original_name.split('.').pop()?.toLowerCase();
+      
+      console.log('Loading preview for:', file.original_name, 'Extension:', ext);
+      console.log('File data:', file);
+      
+      // For images, try to get signed URL first, then public URL
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')) {
+        // Try signed URL first (works with private buckets)
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('vault')
+          .createSignedUrl(file.storage_path, 3600); // 1 hour expiry
+        
+        if (!signedError && signedData?.signedUrl) {
+          console.log('Using signed URL for image');
+          setFilePreviewUrl(signedData.signedUrl);
+        } else {
+          // Fallback to public URL
+          const { data } = supabase.storage
+            .from('vault')
+            .getPublicUrl(file.storage_path);
+          
+          if (data?.publicUrl) {
+            console.log('Using public URL for image');
+            setFilePreviewUrl(data.publicUrl);
+          }
+        }
+      }
+      // For text files, download and show content
+      else if (['txt', 'md', 'json', 'csv', 'log'].includes(ext || '')) {
+        const { data, error } = await supabase.storage
+          .from('vault')
+          .download(file.storage_path);
+
+        if (!error && data) {
+          const text = await data.text();
+          console.log('Loaded text content, length:', text.length);
+          setFilePreviewContent(text);
+        } else {
+          console.error('Error downloading text file:', error);
+        }
+      }
+      // For Word/PDF files, check if text_content exists in database
+      else if (['doc', 'docx', 'pdf'].includes(ext || '')) {
+        if (file.text_content && file.text_content.trim().length > 0) {
+          console.log('Using text_content from database, length:', file.text_content.length);
+          setFilePreviewContent(file.text_content.substring(0, 10000)); // Show first 10000 chars
+        } else {
+          console.log('No text_content available for document. File may need to be processed.');
+          // Try to download and extract text directly
+          try {
+            const { data, error } = await supabase.storage
+              .from('vault')
+              .download(file.storage_path);
+
+            if (!error && data) {
+              console.log('Downloaded document, attempting text extraction preview');
+              // For simple preview, we won't do full extraction here
+              // Just show a message that processing is needed
+            }
+          } catch (err) {
+            console.error('Could not download document:', err);
+          }
+        }
+      }
+      // For other files, try to get the stored text_content
+      else if (file.text_content) {
+        console.log('Using text_content from database (other file type)');
+        setFilePreviewContent(file.text_content.substring(0, 5000));
+      }
+    } catch (error) {
+      console.error('Error loading preview:', error);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -226,6 +390,39 @@ const VaultFiles = () => {
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDeleteFile = async () => {
+    if (!fileToDelete) return;
+
+    try {
+      // Delete from backend (handles storage, FAISS, and database)
+      await ragApi.deleteFile(fileToDelete.id);
+      
+      toast({
+        title: "Success",
+        description: `File "${fileToDelete.original_name}" deleted successfully`,
+      });
+
+      // Clear selection if deleted file was selected
+      if (selectedFile?.id === fileToDelete.id) {
+        setSelectedFile(null);
+        setFilePreviewUrl(null);
+        setFilePreviewContent(null);
+      }
+
+      // Refresh file list
+      fetchFiles();
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting file:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete file",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -313,29 +510,62 @@ const VaultFiles = () => {
               filteredFiles.map((file) => (
                 <div
                   key={file.id}
-                  onClick={() => handleItemClick(file)}
-                  onDoubleClick={() => handleItemDoubleClick(file)}
-                  className={`flex items-center px-2 py-1 rounded cursor-pointer ${
+                  className={`flex items-center gap-2 group px-2 py-1.5 rounded cursor-pointer ${
                     selectedFile?.id === file.id ? "bg-primary/10 text-primary" : "hover:bg-muted"
                   }`}
                 >
-                  <span className="mr-2">{file.is_folder ? "📁" : "📄"}</span>
-                  {editingItemId === file.id ? (
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={() => handleRename(file.id, editingName)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleRename(file.id, editingName);
-                        if (e.key === "Escape") setEditingItemId(null);
-                      }}
-                      autoFocus
-                      className="flex-1 bg-background border border-border rounded px-1 text-sm"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <span>{file.original_name}</span>
+                  <div
+                    className="flex items-center flex-1 min-w-0"
+                    onClick={() => handleItemClick(file)}
+                    onDoubleClick={() => handleItemDoubleClick(file)}
+                  >
+                    <span className="mr-2 shrink-0">{file.is_folder ? "📁" : "📄"}</span>
+                    {editingItemId === file.id ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => handleRename(file.id, editingName)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRename(file.id, editingName);
+                          if (e.key === "Escape") setEditingItemId(null);
+                        }}
+                        autoFocus
+                        className="flex-1 bg-background border border-border rounded px-1 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="truncate flex-1">{file.original_name}</span>
+                    )}
+                  </div>
+                  {!file.is_folder && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleItemClick(file);
+                        }}
+                        title="Preview"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFileToDelete(file);
+                          setDeleteDialogOpen(true);
+                        }}
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))
@@ -353,21 +583,131 @@ const VaultFiles = () => {
 
         {/* Right Panel - Preview */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Preview: {selectedFile?.original_name || "No file selected"}
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">
+              Preview: {selectedFile?.original_name || "No file selected"}
+            </h2>
+            {selectedFile && !selectedFile.is_folder && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setFileToDelete(selectedFile);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            )}
+          </div>
 
           {selectedFile ? (
             <>
-              <div className="border border-border rounded-lg p-8 flex items-center justify-center mb-6 bg-muted/20">
-                <div className="w-24 h-32 bg-white border border-border rounded flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground text-center">
-                    [Thumbnail: {selectedFile.original_name}]
-                  </span>
-                </div>
+              {/* Preview Area */}
+              <div className="border border-border rounded-lg mb-6 bg-muted/20 overflow-hidden min-h-[400px]">
+                {previewLoading ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    Loading preview...
+                  </div>
+                ) : filePreviewUrl ? (
+                  // Image preview
+                  <div className="p-4 flex items-center justify-center bg-white min-h-[400px]">
+                    <img 
+                      src={filePreviewUrl} 
+                      alt={selectedFile.original_name}
+                      className="max-w-full max-h-[500px] object-contain rounded"
+                    />
+                  </div>
+                ) : filePreviewContent ? (
+                  // Text content preview
+                  <div className="p-4 max-h-[500px] overflow-y-auto">
+                    <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground">
+                      {filePreviewContent}
+                    </pre>
+                  </div>
+                ) : (
+                  // Default icon preview
+                  <div className="p-8 flex flex-col items-center justify-center gap-3 min-h-[400px]">
+                    {selectedFile.original_name.match(/\.(pdf)$/i) ? (
+                      <>
+                        <File className="w-16 h-16 text-red-500" />
+                        <p className="text-sm text-muted-foreground text-center max-w-md">
+                          PDF preview not available.<br/>
+                          {selectedFile.text_content ? (
+                            <span className="text-xs mt-2 block">
+                              Text content is available. Click "Show Text" to view extracted text.
+                            </span>
+                          ) : (
+                            <span className="text-xs mt-2 block">
+                              Process this file through embeddings to extract text.
+                            </span>
+                          )}
+                        </p>
+                        {selectedFile.text_content && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFilePreviewContent(selectedFile.text_content.substring(0, 50000));
+                            }}
+                          >
+                            Show Extracted Text
+                          </Button>
+                        )}
+                      </>
+                    ) : selectedFile.original_name.match(/\.(doc|docx)$/i) ? (
+                      <>
+                        <FileText className="w-16 h-16 text-blue-500" />
+                        <p className="text-sm text-muted-foreground text-center max-w-md">
+                          Document preview not available.<br/>
+                          {selectedFile.text_content ? (
+                            <span className="text-xs mt-2 block">
+                              Text content is available. Click "Show Text" to view extracted text.
+                            </span>
+                          ) : (
+                            <span className="text-xs mt-2 block">
+                              Process this file through embeddings to extract text.
+                            </span>
+                          )}
+                        </p>
+                        {selectedFile.text_content && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFilePreviewContent(selectedFile.text_content.substring(0, 50000));
+                            }}
+                          >
+                            Show Extracted Text
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <File className="w-16 h-16 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Preview not available for this file type
+                        </p>
+                        {selectedFile.text_content && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFilePreviewContent(selectedFile.text_content.substring(0, 50000));
+                            }}
+                          >
+                            Show Text Content
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2 text-sm">
+              {/* File Info */}
+              <div className="space-y-2 text-sm border-t pt-4">
                 <p>
                   <strong>Name:</strong> {selectedFile.original_name}
                 </p>
@@ -375,9 +715,18 @@ const VaultFiles = () => {
                   <strong>Size:</strong> {formatFileSize(selectedFile.file_size || 0)}
                 </p>
                 <p>
-                  <strong>Uploaded:</strong>{" "}
-                  {new Date(selectedFile.created_at).toLocaleDateString()}
+                  <strong>Type:</strong> {selectedFile.content_type || "Unknown"}
                 </p>
+                <p>
+                  <strong>Uploaded:</strong>{" "}
+                  {new Date(selectedFile.created_at).toLocaleDateString()} at{" "}
+                  {new Date(selectedFile.created_at).toLocaleTimeString()}
+                </p>
+                {selectedFile.text_content && (
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Text Content:</strong> {formatFileSize(selectedFile.text_content.length)} extracted
+                  </p>
+                )}
               </div>
             </>
           ) : (
@@ -387,6 +736,30 @@ const VaultFiles = () => {
           )}
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete File</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete "{fileToDelete?.original_name}"? This action cannot be undone.
+            <br />
+            <span className="text-xs text-destructive mt-2 block">
+              This will also delete all embeddings and chunks associated with this file.
+            </span>
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteFile}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

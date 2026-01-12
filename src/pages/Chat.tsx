@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
-import { StorageInfo } from "@/components/StorageInfo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Zap, MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2 } from "lucide-react";
+import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversations } from "@/hooks/useConversations";
+import { ragApi } from "@/services/ragApi";
+import { generateSmartTitle } from "@/services/titleGenerator";
 import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
 const Chat = () => {
@@ -19,10 +20,10 @@ const Chat = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [contextPanelOpen, setContextPanelOpen] = useState(true);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
     conversations,
@@ -35,6 +36,8 @@ const Chat = () => {
     deleteConversation,
     uploadFile,
     renameConversation,
+    setCurrentConversation,
+    setMessages,
   } = useConversations(user?.id || null);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ const Chat = () => {
         setUser(session?.user ?? null);
         
         if (!session) {
-          navigate("/");
+          navigate("/login");
         }
       }
     );
@@ -54,7 +57,7 @@ const Chat = () => {
       setUser(session?.user ?? null);
       
       if (!session) {
-        navigate("/");
+        navigate("/login");
         return;
       }
 
@@ -73,12 +76,12 @@ const Chat = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Auto-create new conversation when navigating to /chat
+  // Don't auto-create conversation on mount - wait for user to send a message
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (user && !currentConversation && conversations.length === 0) {
-      createConversation("New Chat");
-    }
-  }, [user, currentConversation, conversations.length, createConversation]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Keyboard shortcut: Ctrl/Cmd+K to create new chat
   useEffect(() => {
@@ -106,47 +109,142 @@ const Chat = () => {
         title: "Success",
         description: "Logged out successfully!",
       });
-      navigate("/");
+      navigate("/login");
     }
   };
 
   const handleSendMessage = async (content: string, files?: File[]) => {
     if (!user) return;
 
-    // Create conversation if none exists
-    if (!currentConversation) {
-      await createConversation("New Chat");
+    // Ensure we have a conversation
+    let conversation = currentConversation;
+    let isNewConversation = false;
+    
+    if (!conversation) {
+      // Generate a smart title from the first message
+      const smartTitle = generateSmartTitle(content);
+      const newConv = await createConversation(smartTitle);
+      
+      if (!newConv) {
+        toast({
+          title: "Error",
+          description: "Failed to create conversation",
+          variant: "destructive",
+        });
+        return;
+      }
+      conversation = newConv;
+      isNewConversation = true;
     }
 
-    // Upload files if any
-    let fileData: Array<{ url: string; name: string }> = [];
-    if (files && files.length > 0 && currentConversation) {
+    // Upload files to RAG vault if any
+    let uploadedFiles: string[] = [];
+    if (files && files.length > 0) {
       toast({
         title: "Uploading files...",
-        description: `Uploading ${files.length} file(s)`,
+        description: `Uploading ${files.length} file(s) to vault`,
       });
 
-      const uploadPromises = files.map((file) =>
-        uploadFile(file, currentConversation.id)
-      );
-      const results = await Promise.all(uploadPromises);
-      fileData = results.filter((data) => data !== null) as Array<{ url: string; name: string }>;
+      try {
+        // Get existing files to check for duplicates
+        const existingFilesResponse = await ragApi.listFiles();
+        const existingFiles = existingFilesResponse.files || [];
+        const existingFileNames = existingFiles.map(f => f.original_name);
+
+        const uploadPromises = files.map(async (file) => {
+          let fileName = file.name;
+          
+          // Check for duplicates and rename if necessary
+          if (existingFileNames.includes(fileName)) {
+            const nameParts = fileName.split('.');
+            const extension = nameParts.pop();
+            const baseName = nameParts.join('.');
+            
+            let counter = 1;
+            let newFileName = `${baseName} duplicate ${counter}.${extension}`;
+            
+            while (existingFileNames.includes(newFileName)) {
+              counter++;
+              newFileName = `${baseName} duplicate ${counter}.${extension}`;
+            }
+            
+            fileName = newFileName;
+            existingFileNames.push(fileName); // Add to list to prevent duplicates in same batch
+            
+            // Create a new File object with the renamed filename
+            const renamedFile = new File([file], fileName, { type: file.type });
+            file = renamedFile;
+          }
+
+          const result = await ragApi.uploadFile(user.id, file);
+          // Auto-embed the document after upload
+          if (result.vault_id) {
+            await ragApi.embedDocument(result.vault_id);
+          }
+          return result.storage_path;
+        });
+        uploadedFiles = await Promise.all(uploadPromises);
+        
+        toast({
+          title: "Success",
+          description: "Files uploaded and embedded successfully",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Upload Error",
+          description: error.message || "Failed to upload files",
+          variant: "destructive",
+        });
+      }
     }
 
-    // Add user message
-    await addMessage(content, false, fileData.map(f => JSON.stringify(f)));
+    // Add user message with the conversation we have
+    const userMessage = await addMessage(content, false, uploadedFiles, conversation.id);
+    if (!userMessage) {
+      toast({
+        title: "Error",
+        description: "Failed to save your message",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Simulate AI response
-    setTimeout(async () => {
+    // Get AI response from RAG backend
+    try {
+      const response = await ragApi.sendMessage({
+        conversation_id: conversation.id,
+        message: content,
+        user_id: user.id,
+        top_k: 10, // Retrieve more chunks for detailed answers
+      });
+
+      // Add AI response with sources
+      let aiMessage = response.response;
+      if (response.sources && response.sources.length > 0) {
+        aiMessage += `\n\n📚 **Sources:**\n${response.sources.map(s => `• ${s}`).join('\n')}`;
+      }
+
+      await addMessage(aiMessage, true, undefined, conversation.id);
+    } catch (error: any) {
+      console.error("RAG API Error:", error);
       await addMessage(
-        "That's a great question! Let me help you with that. Based on current best practices and successful startup strategies, here's what I recommend...",
-        true
+        `⚠️ Sorry, I encountered an error: ${error.message}\n\nPlease make sure the RAG backend is running at http://127.0.0.1:8000`,
+        true,
+        undefined,
+        conversation.id
       );
-    }, 1000);
+    }
   };
 
   const handleNewChat = async () => {
-    await createConversation("New Chat");
+    // Clear current conversation - new one will be created when user sends first message
+    setCurrentConversation(null);
+    setMessages([]);
+    
+    toast({
+      title: "New Chat",
+      description: "Start typing to begin a new conversation",
+    });
   };
 
   const handleDeleteConversation = async (
@@ -177,14 +275,12 @@ const Chat = () => {
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Left Sidebar */}
       <aside
-        className={`${sidebarOpen ? "w-64" : "w-0"} lg:w-64 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}
+        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}
       >
         <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">FounderGPT</span>
+          <div className="flex items-center gap-3 mb-6">
+            <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
+            <span className="text-xl font-bold golden-text">Founder GPT</span>
           </div>
 
           <nav className="space-y-1">
@@ -213,17 +309,18 @@ const Chat = () => {
 
         <div className="flex-1 p-4 overflow-y-auto">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-muted-foreground">CHAT HISTORY</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">CHAT HISTORY</h3>
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
               onClick={handleNewChat}
+              title="New Chat"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {conversations.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No conversations yet
@@ -232,33 +329,38 @@ const Chat = () => {
               conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  className={`flex items-center gap-1 group ${
-                    currentConversation?.id === conv.id ? "bg-sidebar-accent rounded" : ""
+                  className={`flex items-center gap-1 group px-1 py-0.5 rounded-md transition-colors ${
+                    currentConversation?.id === conv.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
                   }`}
                 >
                   <Button
                     variant="ghost"
-                    className="flex-1 justify-start text-sm truncate"
+                    className="flex-1 justify-start text-sm text-left min-w-0 px-2 py-1.5 h-auto font-normal"
                     onClick={() => selectConversation(conv)}
+                    title={conv.title}
                   >
-                    {conv.title}
+                    <span className="block truncate">{conv.title}</span>
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => handleRenameClick(e, conv.id, conv.title)}
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => handleDeleteConversation(e, conv.id)}
-                  >
-                    <Trash2 className="w-3 h-3 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => handleRenameClick(e, conv.id, conv.title)}
+                      title="Rename"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => handleDeleteConversation(e, conv.id)}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
@@ -302,14 +404,6 @@ const Chat = () => {
             </h1>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden"
-            onClick={() => setContextPanelOpen(!contextPanelOpen)}
-          >
-            Context Panel
-          </Button>
         </header>
 
         {/* Chat Messages */}
@@ -325,15 +419,19 @@ const Chat = () => {
                 <p>How can I help you build and scale your startup today?</p>
               </div>
             ) : (
-              messages.map((message) => (
-                <ChatBubble
-                  key={message.id}
-                  message={message.content}
-                  isAI={message.is_ai}
-                  timestamp={new Date(message.created_at).toLocaleString()}
-                  fileUrls={message.file_urls}
-                />
-              ))
+              <>
+                {messages.map((message) => (
+                  <ChatBubble
+                    key={message.id}
+                    message={message.content}
+                    isAI={message.is_ai}
+                    timestamp={new Date(message.created_at).toLocaleString()}
+                    fileUrls={message.file_urls}
+                  />
+                ))}
+                {/* Invisible element to scroll to */}
+                <div ref={messagesEndRef} />
+              </>
             )}
           </div>
         </div>
@@ -366,19 +464,6 @@ const Chat = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Right Context Panel */}
-      <aside
-        className={`${
-          contextPanelOpen ? "w-80" : "w-0"
-        } md:w-80 bg-card border-l border-border transition-all duration-300 overflow-hidden`}
-      >
-        <div className="p-4 h-full overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-4">Dashboard</h2>
-
-          <StorageInfo />
-        </div>
-      </aside>
     </div>
   );
 };

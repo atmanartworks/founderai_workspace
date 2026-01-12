@@ -72,7 +72,8 @@ export const useConversations = (userId: string | null) => {
 
       if (error) throw error;
 
-      setConversations([data, ...conversations]);
+      // Update conversations list using functional update
+      setConversations(prevConvs => [data, ...prevConvs]);
       setCurrentConversation(data);
       setMessages([]);
       
@@ -115,17 +116,27 @@ export const useConversations = (userId: string | null) => {
   };
 
   // Add message to current conversation
-  const addMessage = async (content: string, isAI: boolean, fileUrls?: string[]) => {
-    if (!currentConversation) {
+  const addMessage = async (
+    content: string, 
+    isAI: boolean, 
+    fileUrls?: string[], 
+    conversationId?: string
+  ) => {
+    // Use provided conversationId or fall back to currentConversation
+    const targetConversationId = conversationId || currentConversation?.id;
+    
+    if (!targetConversationId) {
       // Create a new conversation if none exists
       const conv = await createConversation();
       if (!conv) return null;
+      // Use the newly created conversation
+      return addMessage(content, isAI, fileUrls, conv.id);
     }
 
     try {
       // Create message data object
       const messageData: any = {
-        conversation_id: currentConversation!.id,
+        conversation_id: targetConversationId,
         content,
         is_ai: isAI,
       };
@@ -140,13 +151,18 @@ export const useConversations = (userId: string | null) => {
 
       // Add file URLs to the message object for display
       const messageWithFiles = { ...data, file_urls: fileUrls };
-      setMessages([...messages, messageWithFiles]);
+      
+      // Update messages state using functional update to avoid stale closure
+      setMessages(prevMessages => [...prevMessages, messageWithFiles]);
       
       // Update conversation's updated_at
       await supabase
         .from("conversations")
         .update({ updated_at: new Date().toISOString() })
-        .eq("id", currentConversation!.id);
+        .eq("id", targetConversationId);
+
+      // Reload conversations to update the list order
+      await loadConversations();
 
       return messageWithFiles;
     } catch (error: any) {
@@ -271,5 +287,7 @@ export const useConversations = (userId: string | null) => {
     deleteConversation,
     uploadFile,
     renameConversation,
+    setCurrentConversation,
+    setMessages,
   };
 };

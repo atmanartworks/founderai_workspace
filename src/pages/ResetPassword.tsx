@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Zap } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -71,10 +71,8 @@ const ResetPassword = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex flex-col items-center flex-1">
-            <div className="w-12 h-12 gradient-primary rounded-lg flex items-center justify-center mb-4">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold gradient-text">Reset Password</h1>
+            <img src="/atman-logo.png" alt="ĀTMAN" className="w-32 h-32 object-contain mb-6" />
+            <h1 className="text-3xl font-bold golden-text">Reset Password</h1>
             <p className="text-muted-foreground mt-2">Enter your email to receive a reset link</p>
           </div>
         </div>

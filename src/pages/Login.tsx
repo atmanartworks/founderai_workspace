@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -92,10 +91,8 @@ const Login = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 bg-card border-border">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 gradient-primary rounded-lg flex items-center justify-center mb-4">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold gradient-text">FounderGPT</h1>
+          <img src="/atman-logo.png" alt="ĀTMAN" className="w-32 h-32 object-contain mb-6" />
+          <h1 className="text-3xl font-bold golden-text">Founder GPT</h1>
           <p className="text-muted-foreground mt-2">Welcome back</p>
         </div>
 

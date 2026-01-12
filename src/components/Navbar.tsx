@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { Zap, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
@@ -11,18 +11,16 @@ export const Navbar = () => {
   const navItems = [
     { label: "Vault", path: "/dashboard" },
     { label: "Chat", path: "/chat" },
-    { label: "Logs", path: "/chat" },
+    { label: "Logs", path: "/logs" },
   ];
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center group-hover:glow-primary transition-smooth">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-foreground">FounderGPT</span>
+          <div onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer group">
+            <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain group-hover:scale-110 transition-smooth" />
+            <span className="text-xl font-bold golden-text">Founder GPT</span>
           </div>
 
           {/* Desktop Navigation */}

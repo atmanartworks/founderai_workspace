@@ -3,7 +3,7 @@ import { Hero } from "@/components/Hero";
 import { FeatureCard } from "@/components/FeatureCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Rocket, Shield, Zap, Check } from "lucide-react";
+import { Brain, Rocket, Shield, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
@@ -31,7 +31,7 @@ const Landing = () => {
     {
       name: "Sarah Chen",
       role: "Founder, TechFlow",
-      quote: "FounderGPT helped me validate my product idea and create a go-to-market strategy in days, not months."
+      quote: "Founder GPT helped me validate my product idea and create a go-to-market strategy in days, not months."
     },
     {
       name: "Marcus Rodriguez",
@@ -178,11 +178,9 @@ const Landing = () => {
       <footer className="border-t border-border py-12 px-4">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold">FounderGPT</span>
+            <div className="flex items-center gap-3">
+              <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
+              <span className="text-xl font-bold golden-text">Founder GPT</span>
             </div>
             
             <div className="flex flex-wrap justify-center gap-6">
@@ -192,7 +190,7 @@ const Landing = () => {
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-smooth">Contact</a>
             </div>
             
-            <p className="text-sm text-muted-foreground">© 2024 FounderGPT. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© 2024 Founder GPT. All rights reserved.</p>
           </div>
         </div>
       </footer>
