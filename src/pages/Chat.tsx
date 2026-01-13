@@ -500,6 +500,21 @@ const Chat = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Document Viewer Panel */}
+      {documentViewerOpen && (
+        <DocumentViewerPanel
+          documentId={viewingDocumentId}
+          chunkId={viewingChunkId}
+          quotedText={viewingQuotedText}
+          onClose={() => {
+            setDocumentViewerOpen(false);
+            setViewingDocumentId(null);
+            setViewingChunkId(null);
+            setViewingQuotedText(null);
+          }}
+        />
+      )}
     </div>
   );
 };
