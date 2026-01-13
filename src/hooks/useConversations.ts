@@ -131,17 +131,18 @@ export const useConversations = (userId: string | null) => {
     content: string, 
     isAI: boolean, 
     fileUrls?: string[], 
-    conversationId?: string
+    conversationId?: string,
+    citations?: CitationMetadata[]
   ) => {
     // Use provided conversationId or fall back to currentConversation
     const targetConversationId = conversationId || currentConversation?.id;
     
-    if (!targetConversationId) {
+      if (!targetConversationId) {
       // Create a new conversation if none exists
       const conv = await createConversation();
       if (!conv) return null;
       // Use the newly created conversation
-      return addMessage(content, isAI, fileUrls, conv.id);
+      return addMessage(content, isAI, fileUrls, conv.id, citations);
     }
 
     try {
@@ -161,7 +162,7 @@ export const useConversations = (userId: string | null) => {
       if (error) throw error;
 
       // Add file URLs and citations to the message object for display
-      const messageWithFiles = { 
+      const messageWithFiles: Message = { 
         ...data, 
         file_urls: fileUrls,
         citations: citations
