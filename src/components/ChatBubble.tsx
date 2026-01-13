@@ -190,42 +190,49 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
 
       {/* Citation Dialog */}
       <Dialog open={citationDialogOpen} onOpenChange={setCitationDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] glass-card">
+        <DialogContent className="max-w-2xl max-h-[80vh] glass-card border-border/40">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ExternalLink className="w-4 h-4 text-primary" />
-              Citation {selectedCitation?.citation_id}
+            <DialogTitle className="flex items-center gap-2 text-foreground/90">
+              <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                <ExternalLink className="w-4 h-4 text-primary" />
+              </div>
+              <span>Citation {selectedCitation?.citation_id}</span>
             </DialogTitle>
           </DialogHeader>
           {selectedCitation && (
             <ScrollArea className="max-h-[60vh] pr-4">
               <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground/90 mb-1">Source Document</h4>
-                  <p className="text-sm text-foreground/80">{selectedCitation.source_document_name}</p>
+                <div className="glass-card p-3 border border-border/30 rounded-lg">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Source Document</h4>
+                  <p className="text-sm text-foreground/90 font-medium">{selectedCitation.source_document_name}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="glass-card p-3 border border-border/30 rounded-lg flex-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Chunk ID</h4>
+                    <p className="text-sm text-foreground/80">{selectedCitation.chunk_id}</p>
+                  </div>
+                  <div className="glass-card p-3 border border-border/30 rounded-lg flex-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Relevance</h4>
+                    <p className="text-sm text-foreground/80">{selectedCitation.score.toFixed(3)}</p>
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground/90 mb-1">Chunk ID</h4>
-                  <p className="text-sm text-foreground/80">{selectedCitation.chunk_id}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground/90 mb-2">Quoted Text</h4>
-                  <div className="bg-muted/30 border border-border/30 rounded-lg p-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quoted Text</h4>
+                  <div className="glass-card border border-border/30 rounded-lg p-4 highlight-top">
                     <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.quoted_text}
                     </p>
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground/90 mb-2">Full Chunk Content</h4>
-                  <div className="bg-muted/20 border border-border/30 rounded-lg p-3 max-h-64 overflow-y-auto">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Full Chunk Content</h4>
+                  <div className="glass-card border border-border/30 rounded-lg p-4 max-h-64 overflow-y-auto highlight-top">
                     <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.chunk_content}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Relevance Score: {selectedCitation.score.toFixed(3)}</span>
+                <div className="text-xs text-muted-foreground/70 pt-2 border-t border-border/30">
                   <span>Document ID: {selectedCitation.source_document_id.slice(0, 8)}...</span>
                 </div>
               </div>
