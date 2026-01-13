@@ -116,6 +116,26 @@ export const ragApi = {
     return response.json();
   },
 
+  // Get document chunks
+  async getDocumentChunks(documentId: string, userId: string): Promise<{
+    document_id: string;
+    document_name: string;
+    chunks: Array<{
+      chunk_id: string;
+      content: string;
+      chunk_index: number;
+    }>;
+  }> {
+    const response = await fetch(`${RAG_API_URL}/api/documents/${documentId}/chunks?user_id=${userId}`);
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to get document chunks");
+    }
+    
+    return response.json();
+  },
+
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     const response = await fetch(`${RAG_API_URL}/health`);

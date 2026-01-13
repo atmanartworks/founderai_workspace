@@ -96,6 +96,16 @@ All colors MUST be HSL.
   html {
     scroll-behavior: smooth;
   }
+
+  /* Citation highlight styling */
+  mark {
+    background-color: hsl(var(--primary) / 0.4);
+    color: hsl(var(--primary-foreground));
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0.5rem hsl(var(--primary) / 0.2);
+    transition: all 0.2s ease;
+  }
   
   /* Custom scrollbar for dark theme */
   ::-webkit-scrollbar {

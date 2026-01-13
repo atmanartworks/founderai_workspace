@@ -35,7 +35,7 @@ async def options_handler(full_path: str):
     return response
 
 # Import routers (these modules must exist)
-from app.routes import embeddings, chat, vault, search
+from app.routes import embeddings, chat, vault, search, documents
 
 app.include_router(vault.router)
 app.include_router(embeddings.router)

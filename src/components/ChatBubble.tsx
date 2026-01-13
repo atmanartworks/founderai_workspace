@@ -1,6 +1,7 @@
 import { Bot, User, FileText, Download, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -23,6 +24,7 @@ interface ChatBubbleProps {
 }
 
 export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] }: ChatBubbleProps) => {
+  const navigate = useNavigate();
   const [selectedCitation, setSelectedCitation] = useState<CitationMetadata | null>(null);
   const [citationDialogOpen, setCitationDialogOpen] = useState(false);
 
@@ -80,12 +82,17 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
         elements.push(
           <button
             key={`citation-${idx}`}
-            onClick={() => {
-              setSelectedCitation(citation);
-              setCitationDialogOpen(true);
+            onClick={(e) => {
+              e.preventDefault();
+              // Navigate to document viewer with chunk_id and quoted_text
+              const params = new URLSearchParams({
+                chunk_id: citation.chunk_id,
+                quoted_text: encodeURIComponent(citation.quoted_text),
+              });
+              navigate(`/document/${citation.source_document_id}?${params.toString()}`);
             }}
             className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1.5 mx-0.5 text-xs font-semibold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/40 rounded-md transition-all cursor-pointer hover:scale-110 hover:shadow-sm hover:shadow-primary/20 active:scale-95"
-            title={`Citation ${marker.citationId}: ${citation.source_document_name}`}
+            title={`View source: ${citation.source_document_name} (Chunk ${citation.chunk_id})`}
           >
             [{marker.citationId}]
           </button>
