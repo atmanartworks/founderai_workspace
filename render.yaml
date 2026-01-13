@@ -19,4 +19,4 @@ services:
       - key: PORT
         value: 10000
     healthCheckPath: /health
-    plan: starter
+    plan: standard
