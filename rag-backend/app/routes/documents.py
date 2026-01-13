@@ -22,7 +22,7 @@ async def get_document_chunks(document_id: str, user_id: str):
     try:
         # Verify document exists and belongs to user
         doc_result = supabase.table("vault_files")\
-            .select("id, original_name, user_id")\
+            .select("id, original_name, user_id, text_content")\
             .eq("id", document_id)\
             .eq("user_id", user_id)\
             .execute()
@@ -31,36 +31,51 @@ async def get_document_chunks(document_id: str, user_id: str):
             raise HTTPException(404, "Document not found or access denied")
         
         document = doc_result.data[0]
+        text_content = document.get("text_content", "")
         
-        # Load FAISS index and metadata
-        index, metadata = load_index()
-        
-        if index.ntotal == 0:
-            return {
-                "document_id": document_id,
-                "document_name": document["original_name"],
-                "chunks": []
-            }
-        
-        # Filter chunks by document_id (vault_id)
+        # Try to get chunks from FAISS first (if embedded)
         document_chunks = []
-        for chunk_meta in metadata:
-            if chunk_meta.get("vault_id") == document_id and chunk_meta.get("user_id") == user_id:
-                document_chunks.append({
-                    "chunk_id": str(chunk_meta.get("chunk_index", 0)),
-                    "content": chunk_meta.get("content", ""),
-                    "chunk_index": chunk_meta.get("chunk_index", 0)
-                })
+        try:
+            index, metadata = load_index()
+            if index.ntotal > 0:
+                # Filter chunks by document_id (vault_id)
+                for chunk_meta in metadata:
+                    if chunk_meta.get("vault_id") == document_id and chunk_meta.get("user_id") == user_id:
+                        document_chunks.append({
+                            "chunk_id": str(chunk_meta.get("chunk_index", 0)),
+                            "content": chunk_meta.get("content", ""),
+                            "chunk_index": chunk_meta.get("chunk_index", 0)
+                        })
+                
+                # Sort by chunk_index
+                document_chunks.sort(key=lambda x: x["chunk_index"])
+        except Exception as e:
+            logging.warning(f"Could not load FAISS chunks: {e}")
         
-        # Sort by chunk_index
-        document_chunks.sort(key=lambda x: x["chunk_index"])
+        # If no chunks from FAISS but we have text_content, split it into chunks
+        if len(document_chunks) == 0 and text_content and len(text_content.strip()) > 0:
+            # Split text_content into chunks (similar to embedding process)
+            # Use ~500 character chunks with overlap
+            chunk_size = 500
+            overlap = 50
+            text = text_content.strip()
+            
+            for i in range(0, len(text), chunk_size - overlap):
+                chunk_text = text[i:i + chunk_size]
+                if chunk_text.strip():
+                    document_chunks.append({
+                        "chunk_id": str(len(document_chunks)),
+                        "content": chunk_text.strip(),
+                        "chunk_index": len(document_chunks)
+                    })
         
         logging.info(f"Retrieved {len(document_chunks)} chunks for document {document_id}")
         
         return {
             "document_id": document_id,
             "document_name": document["original_name"],
-            "chunks": document_chunks
+            "chunks": document_chunks,
+            "has_text_content": bool(text_content and len(text_content.strip()) > 0)
         }
         
     except HTTPException:

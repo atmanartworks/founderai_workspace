@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
+import { DocumentViewerPanel } from "@/components/DocumentViewerPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -24,6 +25,12 @@ const Chat = () => {
   const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Document viewer panel state
+  const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [viewingChunkId, setViewingChunkId] = useState<string | null>(null);
+  const [viewingQuotedText, setViewingQuotedText] = useState<string | null>(null);
 
   const {
     conversations,
@@ -448,6 +455,12 @@ const Chat = () => {
                     timestamp={new Date(message.created_at).toLocaleString()}
                     fileUrls={message.file_urls}
                     citations={message.citations}
+                    onCitationClick={(documentId, chunkId, quotedText) => {
+                      setViewingDocumentId(documentId);
+                      setViewingChunkId(chunkId);
+                      setViewingQuotedText(quotedText);
+                      setDocumentViewerOpen(true);
+                    }}
                   />
                 ))}
                 {/* Invisible element to scroll to */}

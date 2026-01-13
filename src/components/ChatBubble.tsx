@@ -21,9 +21,10 @@ interface ChatBubbleProps {
   timestamp?: string;
   fileUrls?: string[];
   citations?: CitationMetadata[];
+  onCitationClick?: (documentId: string, chunkId: string, quotedText: string) => void;
 }
 
-export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] }: ChatBubbleProps) => {
+export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [], onCitationClick }: ChatBubbleProps) => {
   const navigate = useNavigate();
   const [selectedCitation, setSelectedCitation] = useState<CitationMetadata | null>(null);
   const [citationDialogOpen, setCitationDialogOpen] = useState(false);
@@ -84,12 +85,21 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
             key={`citation-${idx}`}
             onClick={(e) => {
               e.preventDefault();
-              // Navigate to document viewer with chunk_id and quoted_text
-              const params = new URLSearchParams({
-                chunk_id: citation.chunk_id,
-                quoted_text: encodeURIComponent(citation.quoted_text),
-              });
-              navigate(`/document/${citation.source_document_id}?${params.toString()}`);
+              // Use callback if provided (for panel), otherwise navigate (fallback)
+              if (onCitationClick) {
+                onCitationClick(
+                  citation.source_document_id,
+                  citation.chunk_id,
+                  citation.quoted_text
+                );
+              } else {
+                // Fallback: navigate to full page (for backward compatibility)
+                const params = new URLSearchParams({
+                  chunk_id: citation.chunk_id,
+                  quoted_text: encodeURIComponent(citation.quoted_text),
+                });
+                navigate(`/document/${citation.source_document_id}?${params.toString()}`);
+              }
             }}
             className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1.5 mx-0.5 text-xs font-semibold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/40 rounded-md transition-all cursor-pointer hover:scale-110 hover:shadow-sm hover:shadow-primary/20 active:scale-95"
             title={`View source: ${citation.source_document_name} (Chunk ${citation.chunk_id})`}

@@ -125,6 +125,7 @@ export const ragApi = {
       content: string;
       chunk_index: number;
     }>;
+    has_text_content: boolean;
   }> {
     const response = await fetch(`${RAG_API_URL}/api/documents/${documentId}/chunks?user_id=${userId}`);
     
