@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, FileText, Loader2 } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ragApi } from "@/services/ragApi";
@@ -207,6 +207,9 @@ export function DocumentViewerPanel({
                 <SheetTitle className="text-lg font-semibold text-foreground/90 truncate">
                   {documentName || "Document"}
                 </SheetTitle>
+                <SheetDescription className="sr-only">
+                  Document viewer panel showing document chunks and citations
+                </SheetDescription>
                 {chunks.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {chunks.length} {chunks.length === 1 ? "chunk" : "chunks"}
