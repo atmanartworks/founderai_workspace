@@ -66,7 +66,7 @@ def load_index() -> Tuple[faiss.Index, List[Dict]]:
             _chunks_metadata = pickle.load(f)
         
         _index_loaded = True
-        logging.info(f"Loaded FAISS index with {len(_chunks_metadata)} chunks")
+        logging.info(f"Loaded FAISS index with {len(_chunks_metadata)} chunks (dimension: {_global_index.d})")
         return _global_index, _chunks_metadata
     except Exception as e:
         logging.error(f"Error loading FAISS index: {e}")
@@ -110,7 +110,33 @@ def add_chunks(embeddings: np.ndarray, chunks_metadata: List[Dict]):
                     embed_dim is 768 for nomic, 1536 for OpenAI
         chunks_metadata: List of dicts with keys: content, vault_id, user_id, chunk_index
     """
+    if len(embeddings) == 0:
+        logging.warning("No embeddings to add")
+        return
+    
+    # Detect embedding dimension from the actual embeddings
+    embed_dim = embeddings.shape[1] if len(embeddings.shape) > 1 else len(embeddings[0])
+    logging.info(f"Detected embedding dimension: {embed_dim}")
+    
     index, metadata = load_index()
+    
+    # Check if index dimension matches embedding dimension
+    if index.d != embed_dim:
+        logging.warning(f"Index dimension ({index.d}) doesn't match embedding dimension ({embed_dim}). Creating new index.")
+        # Create new index with correct dimension
+        global _global_index, _chunks_metadata, _index_loaded
+        _global_index = faiss.IndexFlatIP(embed_dim)
+        _chunks_metadata = []
+        _index_loaded = True
+        index = _global_index
+        metadata = _chunks_metadata
+        # Remove old index files to start fresh
+        try:
+            get_index_path().unlink(missing_ok=True)
+            get_metadata_path().unlink(missing_ok=True)
+            logging.info("Removed old index files with mismatched dimension")
+        except Exception as e:
+            logging.warning(f"Could not remove old index files: {e}")
     
     # Normalize embeddings for cosine similarity (FAISS IndexFlatIP expects normalized vectors)
     faiss.normalize_L2(embeddings)
