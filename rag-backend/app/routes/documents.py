@@ -5,15 +5,15 @@ API routes for retrieving document chunks for viewing.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException
-from typing import List, Dict
+from fastapi import APIRouter, HTTPException, Query
+from typing import List, Dict, Optional
 from app.database import supabase
 from app.services.faiss_store import load_index
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 @router.get("/{document_id}/chunks")
-async def get_document_chunks(document_id: str, user_id: str):
+async def get_document_chunks(document_id: str, user_id: str = Query(..., description="User ID")):
     """
     Get all chunks for a specific document.
     
@@ -93,7 +93,7 @@ async def get_document_chunks(document_id: str, user_id: str):
         raise HTTPException(500, f"Failed to retrieve document chunks: {str(e)}")
 
 @router.get("/{document_id}/status")
-async def get_document_status(document_id: str, user_id: str):
+async def get_document_status(document_id: str, user_id: str = Query(..., description="User ID")):
     """
     Get document embedding status and chunk information.
     Useful for debugging why chunks might not be available.
