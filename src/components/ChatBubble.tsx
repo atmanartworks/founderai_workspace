@@ -84,7 +84,7 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
               setSelectedCitation(citation);
               setCitationDialogOpen(true);
             }}
-            className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1 mx-0.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded transition-all cursor-pointer hover:scale-105"
+            className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1.5 mx-0.5 text-xs font-semibold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/40 rounded-md transition-all cursor-pointer hover:scale-110 hover:shadow-sm hover:shadow-primary/20 active:scale-95"
             title={`Citation ${marker.citationId}: ${citation.source_document_name}`}
           >
             [{marker.citationId}]
@@ -93,7 +93,7 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
       } else {
         // Citation not found, render as plain text
         elements.push(
-          <span key={`citation-${idx}`} className="text-primary/60">
+          <span key={`citation-${idx}`} className="text-primary/70 font-medium">
             {text.substring(marker.index, marker.index + marker.length)}
           </span>
         );
@@ -112,9 +112,9 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
     }
 
     return (
-      <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/95">
+      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/95">
         {elements}
-      </p>
+      </div>
     );
   };
 
@@ -190,50 +190,60 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [] 
 
       {/* Citation Dialog */}
       <Dialog open={citationDialogOpen} onOpenChange={setCitationDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] glass-card border-border/40">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground/90">
-              <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                <ExternalLink className="w-4 h-4 text-primary" />
+        <DialogContent className="max-w-3xl max-h-[85vh] glass-card border-border/40 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/30">
+            <DialogTitle className="flex items-center gap-3 text-foreground/95">
+              <div className="p-2 rounded-lg bg-primary/15 border border-primary/30 shadow-sm">
+                <ExternalLink className="w-5 h-5 text-primary" />
               </div>
-              <span>Citation {selectedCitation?.citation_id}</span>
+              <div className="flex flex-col">
+                <span className="text-lg font-semibold">Citation {selectedCitation?.citation_id}</span>
+                {selectedCitation && (
+                  <span className="text-xs text-muted-foreground/70 font-normal mt-0.5">
+                    {selectedCitation.source_document_name}
+                  </span>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
           {selectedCitation && (
-            <ScrollArea className="max-h-[60vh] pr-4">
-              <div className="space-y-4">
-                <div className="glass-card p-3 border border-border/30 rounded-lg">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Source Document</h4>
-                  <p className="text-sm text-foreground/90 font-medium">{selectedCitation.source_document_name}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="glass-card p-3 border border-border/30 rounded-lg flex-1">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Chunk ID</h4>
-                    <p className="text-sm text-foreground/80">{selectedCitation.chunk_id}</p>
+            <ScrollArea className="max-h-[calc(85vh-120px)] px-6 py-4">
+              <div className="space-y-5">
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="glass-card p-4 border border-border/30 rounded-lg highlight-top">
+                    <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-2">Chunk ID</h4>
+                    <p className="text-base text-foreground/90 font-medium">{selectedCitation.chunk_id}</p>
                   </div>
-                  <div className="glass-card p-3 border border-border/30 rounded-lg flex-1">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Relevance</h4>
-                    <p className="text-sm text-foreground/80">{selectedCitation.score.toFixed(3)}</p>
+                  <div className="glass-card p-4 border border-border/30 rounded-lg highlight-top">
+                    <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-2">Relevance Score</h4>
+                    <p className="text-base text-foreground/90 font-medium">{selectedCitation.score.toFixed(3)}</p>
                   </div>
                 </div>
+
+                {/* Quoted Text */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quoted Text</h4>
-                  <div className="glass-card border border-border/30 rounded-lg p-4 highlight-top">
+                  <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-3">Quoted Text</h4>
+                  <div className="glass-card border border-border/30 rounded-lg p-5 highlight-top bg-card/50">
                     <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.quoted_text}
                     </p>
                   </div>
                 </div>
+
+                {/* Full Chunk Content */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Full Chunk Content</h4>
-                  <div className="glass-card border border-border/30 rounded-lg p-4 max-h-64 overflow-y-auto highlight-top">
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                  <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-3">Full Chunk Content</h4>
+                  <div className="glass-card border border-border/30 rounded-lg p-5 max-h-80 overflow-y-auto highlight-top bg-card/40">
+                    <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.chunk_content}
                     </p>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground/70 pt-2 border-t border-border/30">
-                  <span>Document ID: {selectedCitation.source_document_id.slice(0, 8)}...</span>
+
+                {/* Footer */}
+                <div className="text-xs text-muted-foreground/60 pt-3 border-t border-border/30">
+                  <span className="font-mono">Document ID: {selectedCitation.source_document_id}</span>
                 </div>
               </div>
             </ScrollArea>
