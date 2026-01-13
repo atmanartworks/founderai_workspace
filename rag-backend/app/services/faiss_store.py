@@ -110,6 +110,8 @@ def add_chunks(embeddings: np.ndarray, chunks_metadata: List[Dict]):
                     embed_dim is 768 for nomic, 1536 for OpenAI
         chunks_metadata: List of dicts with keys: content, vault_id, user_id, chunk_index
     """
+    global _global_index, _chunks_metadata, _index_loaded
+    
     if len(embeddings) == 0:
         logging.warning("No embeddings to add")
         return
@@ -124,7 +126,6 @@ def add_chunks(embeddings: np.ndarray, chunks_metadata: List[Dict]):
     if index.d != embed_dim:
         logging.warning(f"Index dimension ({index.d}) doesn't match embedding dimension ({embed_dim}). Creating new index.")
         # Create new index with correct dimension
-        global _global_index, _chunks_metadata, _index_loaded
         _global_index = faiss.IndexFlatIP(embed_dim)
         _chunks_metadata = []
         _index_loaded = True
@@ -151,7 +152,6 @@ def add_chunks(embeddings: np.ndarray, chunks_metadata: List[Dict]):
     save_index(index, metadata)
     
     # Update global state
-    global _global_index, _chunks_metadata
     _global_index = index
     _chunks_metadata = metadata
     
