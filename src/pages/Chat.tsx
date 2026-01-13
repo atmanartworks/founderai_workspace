@@ -4,7 +4,7 @@ import { ChatComposer } from "@/components/ChatComposer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2 } from "lucide-react";
+import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2, Bot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
