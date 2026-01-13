@@ -77,7 +77,17 @@ export function DocumentViewerPanel({
       const result = await ragApi.getDocumentChunks(documentId, user.id);
       console.log("DocumentViewerPanel: Loaded chunks", result);
       setDocumentName(result.document_name);
-      setChunks(result.chunks);
+      setChunks(result.chunks || []);
+      
+      if (result.chunks && result.chunks.length > 0) {
+        console.log(`DocumentViewerPanel: Loaded ${result.chunks.length} chunks`);
+      } else {
+        console.warn("DocumentViewerPanel: No chunks found", {
+          has_text_content: result.has_text_content,
+          chunks_from_faiss: result.chunks_from_faiss,
+          chunks_from_text: result.chunks_from_text
+        });
+      }
     } catch (error: any) {
       console.error("DocumentViewerPanel: Error loading document:", error);
     } finally {
@@ -214,10 +224,13 @@ export function DocumentViewerPanel({
               <p className="text-sm text-muted-foreground">Loading document...</p>
             </div>
           ) : chunks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
               <FileText className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-2">
                 This document has not been processed yet.
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Please embed the document from the Dashboard to enable citations.
               </p>
             </div>
           ) : (
