@@ -140,7 +140,10 @@ class CitationService:
         question: str,
         chunks: List[Dict],
         vault_id_to_filename: Dict[str, str],
-        openai_client
+        openai_client,
+        lines: int = 0,
+        short: bool = False,
+        steps: bool = False
     ) -> Tuple[str, List[Dict]]:
         """
         Use LLM to generate answer with inline citations.
@@ -193,8 +196,20 @@ class CitationService:
         
         context = "\n\n---\n\n".join(context_parts)
         
+        # Build format instructions based on constraints
+        format_instructions = []
+        if lines > 0:
+            format_instructions.append(f"- Answer in EXACTLY {lines} lines")
+            format_instructions.append(f"- Each line max 20 words")
+        if short:
+            format_instructions.append("- Be brief and concise")
+        if steps:
+            format_instructions.append("- Format as numbered steps")
+        
+        format_text = "\n".join(format_instructions) if format_instructions else "- Provide a comprehensive, detailed answer"
+        
         # Prompt LLM to generate answer with citations
-        system_prompt = """You are FounderGPT, a citation-aware AI assistant that generates answers with interactive citations.
+        system_prompt = f"""You are FounderGPT, a citation-aware AI assistant that generates answers with interactive citations.
 
 CRITICAL CITATION RULES:
 1. Every factual statement derived from documents MUST include a citation reference like [1], [2]
@@ -205,12 +220,16 @@ CRITICAL CITATION RULES:
 6. DO NOT invent citations - only use citations 1 through the number of chunks provided
 7. Place citations immediately after the statement they support
 
+FORMAT REQUIREMENTS:
+{format_text}
+
 OUTPUT FORMAT:
 - Write clean, professional text in natural paragraphs
 - Include inline citations like [1] or [2][3] immediately after factual statements
 - Do NOT include citation metadata, sources list, or "according to document" phrases
 - Do NOT use markdown formatting (no **, *, #, etc.)
 - Write in clean plain text like ChatGPT
+- Follow the format requirements above strictly
 
 EXAMPLE:
 "The project uses React for the frontend [1] and FastAPI for the backend [2]. The deployment is handled on Vercel [1]. The application follows a clean architecture pattern [2]."

@@ -501,10 +501,13 @@ async def send_message(payload: ChatRequest):
                         question=rewritten_question,
                         chunks=chunks,
                         vault_id_to_filename=vault_id_to_filename,
-                        openai_client=embedding_service.openai_client
+                        openai_client=embedding_service.openai_client,
+                        lines=constraints["lines"],
+                        short=constraints["short"],
+                        steps=constraints["steps"]
                     )
                     
-                    # Apply constraints to the cited answer
+                    # Apply constraints as fail-safe (citation service should already apply them)
                     assistant_text = enforce_constraints(
                         assistant_text,
                         lines=constraints["lines"],
