@@ -84,7 +84,11 @@ else:
 
 # Export commonly used environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
+# Prefer service role key for backend (bypasses RLS), fallback to anon key
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Use service role key if available, otherwise use anon key
+SUPABASE_KEY_TO_USE = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "vault")
 
 # Get OPENAI_API_KEY (may have been manually set above)
