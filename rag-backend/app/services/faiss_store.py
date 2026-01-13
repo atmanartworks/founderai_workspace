@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import numpy as np
+
 import faiss
 
 # Storage directory for FAISS indices and metadata
