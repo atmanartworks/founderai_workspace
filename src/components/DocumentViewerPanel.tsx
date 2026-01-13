@@ -60,18 +60,26 @@ export function DocumentViewerPanel({
   }, [highlightedChunkId, chunks]);
 
   const loadDocument = async () => {
-    if (!documentId) return;
+    if (!documentId) {
+      console.warn("DocumentViewerPanel: No documentId provided");
+      return;
+    }
     
     try {
       setLoading(true);
+      console.log("DocumentViewerPanel: Loading document", documentId);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.warn("DocumentViewerPanel: No user found");
+        return;
+      }
 
       const result = await ragApi.getDocumentChunks(documentId, user.id);
+      console.log("DocumentViewerPanel: Loaded chunks", result);
       setDocumentName(result.document_name);
       setChunks(result.chunks);
     } catch (error: any) {
-      console.error("Error loading document:", error);
+      console.error("DocumentViewerPanel: Error loading document:", error);
     } finally {
       setLoading(false);
     }
@@ -163,8 +171,11 @@ export function DocumentViewerPanel({
     return null;
   }
 
+  console.log("DocumentViewerPanel render:", { documentId, chunkId, quotedText });
+
   return (
     <Sheet open={!!documentId} onOpenChange={(open) => {
+      console.log("DocumentViewerPanel Sheet onOpenChange:", open);
       if (!open) {
         onClose();
       }
