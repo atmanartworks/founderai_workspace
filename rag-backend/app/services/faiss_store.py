@@ -230,7 +230,7 @@ def search(
         
         # Search (get more results to filter by user_id/vault_id)
         search_k = top_k * 10  # Get more candidates for filtering
-        scores, indices = index.search(query_embedding, min(search_k, index.ntotal)))
+        scores, indices = index.search(query_embedding, min(search_k, index.ntotal))
     
         # Filter by user_id and optionally vault_id
         results = []
