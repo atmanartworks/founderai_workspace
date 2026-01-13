@@ -22,17 +22,27 @@ async def get_document_chunks(document_id: str, user_id: str = Query(..., descri
     """
     try:
         # Verify document exists and belongs to user
-        doc_result = supabase.table("vault_files")\
-            .select("id, original_name, user_id, text_content")\
-            .eq("id", document_id)\
-            .eq("user_id", user_id)\
-            .execute()
+        # Try to get text_content, but handle if column doesn't exist
+        try:
+            doc_result = supabase.table("vault_files")\
+                .select("id, original_name, user_id, text_content")\
+                .eq("id", document_id)\
+                .eq("user_id", user_id)\
+                .execute()
+        except Exception as e:
+            # If text_content column doesn't exist, try without it
+            logging.warning(f"Could not select text_content column: {e}, trying without it")
+            doc_result = supabase.table("vault_files")\
+                .select("id, original_name, user_id")\
+                .eq("id", document_id)\
+                .eq("user_id", user_id)\
+                .execute()
         
         if not doc_result.data:
             raise HTTPException(404, "Document not found or access denied")
         
         document = doc_result.data[0]
-        text_content = document.get("text_content", "")
+        text_content = document.get("text_content", "") if "text_content" in document else ""
         
         # Try to get chunks from FAISS first (if embedded)
         document_chunks = []
@@ -100,17 +110,27 @@ async def get_document_status(document_id: str, user_id: str = Query(..., descri
     """
     try:
         # Verify document exists
-        doc_result = supabase.table("vault_files")\
-            .select("id, original_name, user_id, text_content, file_size, content_type")\
-            .eq("id", document_id)\
-            .eq("user_id", user_id)\
-            .execute()
+        # Try to get text_content, but handle if column doesn't exist
+        try:
+            doc_result = supabase.table("vault_files")\
+                .select("id, original_name, user_id, text_content, file_size, content_type")\
+                .eq("id", document_id)\
+                .eq("user_id", user_id)\
+                .execute()
+        except Exception as e:
+            # If text_content column doesn't exist, try without it
+            logging.warning(f"Could not select text_content column: {e}, trying without it")
+            doc_result = supabase.table("vault_files")\
+                .select("id, original_name, user_id, file_size, content_type")\
+                .eq("id", document_id)\
+                .eq("user_id", user_id)\
+                .execute()
         
         if not doc_result.data:
             raise HTTPException(404, "Document not found or access denied")
         
         document = doc_result.data[0]
-        text_content = document.get("text_content", "")
+        text_content = document.get("text_content", "") if "text_content" in document else ""
         
         # Check FAISS for chunks
         faiss_chunk_count = 0
