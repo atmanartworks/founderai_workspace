@@ -8,11 +8,22 @@ export interface ChatRequest {
   top_k?: number;
 }
 
+export interface CitationMetadata {
+  citation_id: number;
+  source_document_id: string;
+  source_document_name: string;
+  chunk_id: string;
+  quoted_text: string;
+  chunk_content: string;
+  score: number;
+}
+
 export interface ChatResponse {
   response: string;
   sources: string[];
   message_id: string;
   conversation_id: string;
+  citations?: CitationMetadata[];
 }
 
 export interface VaultFile {

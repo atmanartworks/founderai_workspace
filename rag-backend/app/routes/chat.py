@@ -15,6 +15,7 @@ from app.services.question_rewrite import rewrite_question
 from app.services.answer_enforcer import enforce_constraints
 from app.services.query_classifier import classify_query
 from app.services.faiss_store import search as faiss_search
+from app.services.citation_service import CitationService
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -25,11 +26,21 @@ class ChatRequest(BaseModel):
     top_k: int = 5
     vault_id: str = None  # Optional: specify which document to query
 
+class CitationMetadata(BaseModel):
+    citation_id: int
+    source_document_id: str
+    source_document_name: str
+    chunk_id: str
+    quoted_text: str
+    chunk_content: str
+    score: float
+
 class ChatResponse(BaseModel):
     response: str
     sources: List[str]
     message_id: str
     conversation_id: str
+    citations: List[CitationMetadata] = []  # Citation metadata for interactive citations
 
 @router.post("/message", response_model=ChatResponse)
 async def send_message(payload: ChatRequest):
@@ -471,25 +482,115 @@ async def send_message(payload: ChatRequest):
         if conversation_history:
             context = f"CONVERSATION HISTORY:\n{conversation_history}\n\n---\n\nDOCUMENT CONTEXT:\n{context}"
         
-        # 4. Generate answer with strict constraints and context
-        # For overview queries, add special instruction to cover all documents
-        is_overview_query = any(phrase in message_lower for phrase in [
-            "overview of documents", "overview of files", "summary of documents", "summary of files",
-            "documents available", "files available", "all documents", "all files"
-        ])
+        # 4. Generate answer with citations if we have chunks
+        citations_metadata = []
         
-        if is_overview_query and not target_vault_id:
-            # Add instruction to the question to ensure all documents are covered
-            rewritten_question = f"{rewritten_question}\n\nIMPORTANT: Provide information about ALL documents/files mentioned in the context. Do not focus on just one document. Give a comprehensive overview covering each document separately."
+        if chunks and len(chunks) > 0:
+            # Generate answer with inline citations using citation service
+            try:
+                # Get OpenAI client from embedding service
+                if not embedding_service._openai_initialized:
+                    if embedding_service.openai_api_key:
+                        from openai import OpenAI
+                        embedding_service.openai_client = OpenAI(api_key=embedding_service.openai_api_key)
+                        embedding_service._openai_initialized = True
+                
+                if embedding_service.openai_client:
+                    # Use citation service to generate answer with citations
+                    assistant_text, citations_metadata = CitationService.generate_cited_answer_with_llm(
+                        question=rewritten_question,
+                        chunks=chunks,
+                        vault_id_to_filename=vault_id_to_filename,
+                        openai_client=embedding_service.openai_client
+                    )
+                    
+                    # Apply constraints to the cited answer
+                    assistant_text = enforce_constraints(
+                        assistant_text,
+                        lines=constraints["lines"],
+                        short=constraints["short"],
+                        steps=constraints["steps"]
+                    )
+                else:
+                    # Fallback to regular generation if OpenAI not available
+                    assistant_text = await embedding_service.generate(
+                        prompt="",
+                        lines=constraints["lines"],
+                        short=constraints["short"],
+                        steps=constraints["steps"],
+                        context=context,
+                        question=rewritten_question
+                    )
+                    # Create basic citations from chunks
+                    citation_counter = 1
+                    for chunk in chunks:
+                        v_id = chunk.get("vault_id", "unknown")
+                        chunk_index = chunk.get("chunk_index", 0)
+                        chunk_content = chunk.get("content", "").strip()
+                        score = chunk.get("score", 0.0)
+                        filename = vault_id_to_filename.get(v_id, f"Document {v_id[:8]}")
+                        
+                        citations_metadata.append({
+                            "citation_id": citation_counter,
+                            "source_document_id": v_id,
+                            "source_document_name": filename,
+                            "chunk_id": str(chunk_index),
+                            "quoted_text": chunk_content[:200] + "..." if len(chunk_content) > 200 else chunk_content,
+                            "chunk_content": chunk_content,
+                            "score": float(score)
+                        })
+                        citation_counter += 1
+            except Exception as e:
+                logging.error(f"Error generating cited answer: {e}", exc_info=True)
+                # Fallback to regular generation
+                assistant_text = await embedding_service.generate(
+                    prompt="",
+                    lines=constraints["lines"],
+                    short=constraints["short"],
+                    steps=constraints["steps"],
+                    context=context,
+                    question=rewritten_question
+                )
+                # Still create citations from chunks even if citation generation failed
+                citation_counter = 1
+                for chunk in chunks:
+                    v_id = chunk.get("vault_id", "unknown")
+                    chunk_index = chunk.get("chunk_index", 0)
+                    chunk_content = chunk.get("content", "").strip()
+                    score = chunk.get("score", 0.0)
+                    filename = vault_id_to_filename.get(v_id, f"Document {v_id[:8]}")
+                    
+                    citations_metadata.append({
+                        "citation_id": citation_counter,
+                        "source_document_id": v_id,
+                        "source_document_name": filename,
+                        "chunk_id": str(chunk_index),
+                        "quoted_text": chunk_content[:200] + "..." if len(chunk_content) > 200 else chunk_content,
+                        "chunk_content": chunk_content,
+                        "score": float(score)
+                    })
+                    citation_counter += 1
+        else:
+            # No chunks - generate without citations
+            assistant_text = await embedding_service.generate(
+                prompt="",
+                lines=constraints["lines"],
+                short=constraints["short"],
+                steps=constraints["steps"],
+                context=context,
+                question=rewritten_question
+            )
         
-        assistant_text = await embedding_service.generate(
-            prompt="",  # Not used when context/question provided
-            lines=constraints["lines"],
-            short=constraints["short"],
-            steps=constraints["steps"],
-            context=context,
-            question=rewritten_question
-        )
+        # 5. Enforce constraints as fail-safe (if not already applied in citation generation)
+        # Note: Constraints are applied in citation generation, but apply again as fail-safe
+        if not (chunks and len(chunks) > 0 and embedding_service.openai_client):
+            assistant_text = enforce_constraints(
+                assistant_text,
+                lines=constraints["lines"],
+                short=constraints["short"],
+                steps=constraints["steps"]
+            )
+        
         if not assistant_text:
             raise HTTPException(500, "AI generation failed")
         
@@ -515,7 +616,18 @@ async def send_message(payload: ChatRequest):
         except Exception:
             message_id = "unknown"
 
-        return ChatResponse(response=assistant_text, sources=used_documents["files"], message_id=message_id, conversation_id=conversation_id)
+        # Convert citations to Pydantic models
+        citation_models = [
+            CitationMetadata(**citation) for citation in citations_metadata
+        ]
+
+        return ChatResponse(
+            response=assistant_text, 
+            sources=used_documents["files"], 
+            message_id=message_id, 
+            conversation_id=conversation_id,
+            citations=citation_models
+        )
 
     except Exception as e:
         raise HTTPException(500, str(e))

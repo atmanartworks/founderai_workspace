@@ -218,13 +218,8 @@ const Chat = () => {
         top_k: 10, // Retrieve more chunks for detailed answers
       });
 
-      // Add AI response with sources
-      let aiMessage = response.response;
-      if (response.sources && response.sources.length > 0) {
-        aiMessage += `\n\n📚 **Sources:**\n${response.sources.map(s => `• ${s}`).join('\n')}`;
-      }
-
-      await addMessage(aiMessage, true, undefined, conversation.id);
+      // Add AI response with citations (citations are handled in ChatBubble component)
+      await addMessage(response.response, true, undefined, conversation.id, response.citations);
     } catch (error: any) {
       console.error("RAG API Error:", error);
       await addMessage(
@@ -452,6 +447,7 @@ const Chat = () => {
                     isAI={message.is_ai}
                     timestamp={new Date(message.created_at).toLocaleString()}
                     fileUrls={message.file_urls}
+                    citations={message.citations}
                   />
                 ))}
                 {/* Invisible element to scroll to */}

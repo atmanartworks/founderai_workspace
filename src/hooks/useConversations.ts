@@ -9,6 +9,16 @@ export interface Conversation {
   updated_at: string;
 }
 
+export interface CitationMetadata {
+  citation_id: number;
+  source_document_id: string;
+  source_document_name: string;
+  chunk_id: string;
+  quoted_text: string;
+  chunk_content: string;
+  score: number;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -16,6 +26,7 @@ export interface Message {
   is_ai: boolean;
   created_at: string;
   file_urls?: string[];
+  citations?: CitationMetadata[];
 }
 
 interface MessageInsert {
@@ -149,8 +160,12 @@ export const useConversations = (userId: string | null) => {
 
       if (error) throw error;
 
-      // Add file URLs to the message object for display
-      const messageWithFiles = { ...data, file_urls: fileUrls };
+      // Add file URLs and citations to the message object for display
+      const messageWithFiles = { 
+        ...data, 
+        file_urls: fileUrls,
+        citations: citations
+      };
       
       // Update messages state using functional update to avoid stale closure
       setMessages(prevMessages => [...prevMessages, messageWithFiles]);
