@@ -4,7 +4,7 @@ services:
     name: rag-backend
     env: python
     rootDir: rag-backend
-    buildCommand: cd rag-backend && pip install -r requirements-railway.txt
+    buildCommand: pip install -r requirements-railway.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
