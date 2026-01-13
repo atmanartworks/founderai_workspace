@@ -39,14 +39,22 @@ async def send_message(payload: ChatRequest):
         except Exception:
             conversation_id = str(uuid.uuid4())
 
+        # Validate user_id
+        if not payload.user_id:
+            raise HTTPException(400, "user_id is required")
+        
         # ensure conversation exists
-        existing = supabase.table("conversations").select("id").eq("id", conversation_id).execute()
-        if not existing.data:
-            supabase.table("conversations").insert({
-                "id": conversation_id,
-                "user_id": payload.user_id,
-                "created_at": datetime.utcnow().isoformat()
-            }).execute()
+        try:
+            existing = supabase.table("conversations").select("id").eq("id", conversation_id).execute()
+            if not existing.data:
+                supabase.table("conversations").insert({
+                    "id": conversation_id,
+                    "user_id": payload.user_id,
+                    "created_at": datetime.utcnow().isoformat()
+                }).execute()
+        except Exception as e:
+            logging.error(f"Error ensuring conversation exists: {e}", exc_info=True)
+            raise HTTPException(500, f"Database error: {str(e)}")
 
         # 1. Classify query to determine if RAG is needed
         query_classification = classify_query(payload.message)
@@ -277,12 +285,22 @@ async def send_message(payload: ChatRequest):
         logging.info(f"Rewritten question: '{rewritten_question}' (vague={is_vague_query}, vault_id={target_vault_id})")
         
         # 3. Embed the rewritten query for better semantic search
-        query_embedding_list = await embedding_service.embed_text(rewritten_question)
-        if not query_embedding_list:
-            raise HTTPException(500, "Failed to generate query embedding")
-        
-        # Convert to numpy array for FAISS (normalize for cosine similarity)
-        query_embedding = np.array([query_embedding_list], dtype=np.float32)
+        try:
+            query_embedding_list = await embedding_service.embed_text(rewritten_question)
+            if not query_embedding_list or len(query_embedding_list) == 0:
+                raise HTTPException(500, "Failed to generate query embedding: Empty embedding returned")
+            
+            # Convert to numpy array for FAISS (normalize for cosine similarity)
+            query_embedding = np.array([query_embedding_list], dtype=np.float32)
+            
+            # Validate embedding dimension
+            if query_embedding.shape[1] not in [768, 1536]:
+                logging.warning(f"Unexpected embedding dimension: {query_embedding.shape[1]}, expected 768 or 1536")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logging.error(f"Error generating query embedding: {e}")
+            raise HTTPException(500, f"Failed to generate query embedding: {str(e)}")
 
         # Only perform RAG retrieval if needed
         chunks = []

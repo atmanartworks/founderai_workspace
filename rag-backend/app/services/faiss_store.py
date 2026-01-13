@@ -208,44 +208,58 @@ def search(
     Returns:
         List of dicts with keys: content, vault_id, user_id, chunk_index, score
     """
-    index, metadata = load_index()
-    
-    if index.ntotal == 0:
-        return []
-    
-    # Normalize query embedding
-    query_embedding = query_embedding.astype(np.float32)
-    faiss.normalize_L2(query_embedding)
-    
-    # Search (get more results to filter by user_id/vault_id)
-    search_k = top_k * 10  # Get more candidates for filtering
-    scores, indices = index.search(query_embedding, min(search_k, index.ntotal))
-    
-    # Filter by user_id and optionally vault_id
-    results = []
-    for score, idx in zip(scores[0], indices[0]):
-        if idx < 0 or idx >= len(metadata):
-            continue
+    try:
+        index, metadata = load_index()
         
-        chunk_meta = metadata[idx]
+        if index.ntotal == 0:
+            logging.info("FAISS index is empty, returning no results")
+            return []
         
-        # Filter by user_id
-        if chunk_meta.get("user_id") != user_id:
-            continue
+        # Validate query embedding shape
+        if len(query_embedding.shape) != 2 or query_embedding.shape[0] != 1:
+            raise ValueError(f"Invalid query embedding shape: {query_embedding.shape}, expected (1, embed_dim)")
         
-        # Filter by vault_id if specified
-        if vault_id and chunk_meta.get("vault_id") != vault_id:
-            continue
+        # Check dimension mismatch
+        if query_embedding.shape[1] != index.d:
+            logging.warning(f"Query embedding dimension ({query_embedding.shape[1]}) doesn't match index dimension ({index.d})")
+            return []  # Return empty results rather than crashing
         
-        # Add score to result
-        result = chunk_meta.copy()
-        result["score"] = float(score)
-        results.append(result)
+        # Normalize query embedding
+        query_embedding = query_embedding.astype(np.float32)
+        faiss.normalize_L2(query_embedding)
         
-        if len(results) >= top_k:
-            break
+        # Search (get more results to filter by user_id/vault_id)
+        search_k = top_k * 10  # Get more candidates for filtering
+        scores, indices = index.search(query_embedding, min(search_k, index.ntotal)))
     
-    return results
+        # Filter by user_id and optionally vault_id
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx < 0 or idx >= len(metadata):
+                continue
+            
+            chunk_meta = metadata[idx]
+            
+            # Filter by user_id
+            if chunk_meta.get("user_id") != user_id:
+                continue
+            
+            # Filter by vault_id if specified
+            if vault_id and chunk_meta.get("vault_id") != vault_id:
+                continue
+            
+            # Add score to result
+            result = chunk_meta.copy()
+            result["score"] = float(score)
+            results.append(result)
+            
+            if len(results) >= top_k:
+                break
+        
+        return results
+    except Exception as e:
+        logging.error(f"Error in FAISS search: {e}")
+        return []  # Return empty results on error rather than crashing
 
 def get_stats() -> Dict:
     """Get statistics about the FAISS index"""
