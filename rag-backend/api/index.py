@@ -18,7 +18,26 @@ os.chdir(backend_path)
 # Import FastAPI app
 from app.main import app
 
-# CORS Middleware for Vercel
+# Wrap app with ASGI middleware that handles OPTIONS at the lowest level
+async def cors_wrapper(scope, receive, send):
+    """ASGI wrapper that handles OPTIONS before FastAPI"""
+    if scope["type"] == "http":
+        method = scope.get("method", "")
+        
+        # Handle OPTIONS requests immediately
+        if method == "OPTIONS":
+            response = Response()
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Max-Age"] = "3600"
+            await response(scope, receive, send)
+            return
+    
+    # For all other requests, pass to FastAPI app
+    await app(scope, receive, send)
+
+# CORS Middleware for Vercel (backup)
 class CORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Handle OPTIONS preflight requests
@@ -40,5 +59,6 @@ class CORSMiddleware(BaseHTTPMiddleware):
 # Add CORS middleware at the top level
 app.add_middleware(CORSMiddleware)
 
+# Export the wrapped app for Vercel
 # Vercel expects the app to be exported
-# FastAPI apps work directly with Vercel's Python runtime
+app = cors_wrapper
