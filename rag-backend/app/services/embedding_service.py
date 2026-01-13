@@ -41,16 +41,85 @@ class EmbeddingService:
         self._openai_initialized = False
 
     async def embed_text(self, text: str):
-        if not text or not self.embed_model:
+        """Generate embedding for a single text. Falls back to OpenAI if sentence-transformers not available."""
+        if not text:
             return []
-        vec = self.embed_model.encode([text], convert_to_numpy=True, normalize_embeddings=True)[0]
-        return vec.tolist()  # Return as list for backward compatibility, but normalized
+        
+        # Try sentence-transformers first
+        if self.embed_model:
+            try:
+                vec = self.embed_model.encode([text], convert_to_numpy=True, normalize_embeddings=True)[0]
+                return vec.tolist()  # Return as list for backward compatibility, but normalized
+            except Exception as e:
+                logging.warning(f"sentence-transformers embedding failed: {e}, falling back to OpenAI")
+        
+        # Fallback to OpenAI embeddings
+        if not self.openai_api_key:
+            logging.error("No embedding model available and OPENAI_API_KEY not set")
+            raise Exception("Failed to generate query embedding: No embedding model or OpenAI API key available")
+        
+        # Initialize OpenAI client if needed
+        if not self._openai_initialized:
+            if OpenAI is None:
+                raise Exception("OpenAI library not available")
+            self.openai_client = OpenAI(api_key=self.openai_api_key)
+            self._openai_initialized = True
+        
+        try:
+            # Use OpenAI text-embedding-3-small (1536 dimensions) or text-embedding-ada-002 (1536 dimensions)
+            response = self.openai_client.embeddings.create(
+                model="text-embedding-3-small",  # or "text-embedding-ada-002"
+                input=text
+            )
+            embedding = response.data[0].embedding
+            logging.info(f"Generated OpenAI embedding (dimension: {len(embedding)})")
+            return embedding
+        except Exception as e:
+            logging.error(f"OpenAI embedding failed: {e}")
+            raise Exception(f"Failed to generate query embedding: {str(e)}")
 
     async def embed_batch(self, texts: list):
-        if not texts or not self.embed_model:
+        """Generate embeddings for multiple texts. Falls back to OpenAI if sentence-transformers not available."""
+        if not texts:
             return []
-        mats = self.embed_model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
-        return mats  # Return numpy array for FAISS (already normalized)
+        
+        # Try sentence-transformers first
+        if self.embed_model:
+            try:
+                mats = self.embed_model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+                return mats  # Return numpy array for FAISS (already normalized)
+            except Exception as e:
+                logging.warning(f"sentence-transformers batch embedding failed: {e}, falling back to OpenAI")
+        
+        # Fallback to OpenAI embeddings
+        if not self.openai_api_key:
+            logging.error("No embedding model available and OPENAI_API_KEY not set")
+            raise Exception("Failed to generate embeddings: No embedding model or OpenAI API key available")
+        
+        # Initialize OpenAI client if needed
+        if not self._openai_initialized:
+            if OpenAI is None:
+                raise Exception("OpenAI library not available")
+            self.openai_client = OpenAI(api_key=self.openai_api_key)
+            self._openai_initialized = True
+        
+        try:
+            # Use OpenAI text-embedding-3-small (1536 dimensions)
+            response = self.openai_client.embeddings.create(
+                model="text-embedding-3-small",
+                input=texts
+            )
+            # Convert to numpy array
+            import numpy as np
+            embeddings = np.array([item.embedding for item in response.data], dtype=np.float32)
+            # Normalize for cosine similarity
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            embeddings = embeddings / norms
+            logging.info(f"Generated OpenAI batch embeddings (shape: {embeddings.shape})")
+            return embeddings
+        except Exception as e:
+            logging.error(f"OpenAI batch embedding failed: {e}")
+            raise Exception(f"Failed to generate embeddings: {str(e)}")
 
     async def generate(
         self, 

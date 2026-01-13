@@ -44,12 +44,17 @@ def load_index() -> Tuple[faiss.Index, List[Dict]]:
     
     if not index_path.exists() or not metadata_path.exists():
         # Create new empty index
-        # Nomic embedding dimension is 768
-        EMBED_DIM = 768
+        # Detect embedding dimension from config or default to 1536 (OpenAI) or 768 (nomic)
+        from app.config import LOCAL_EMBEDDING_MODEL
+        # OpenAI embeddings are 1536, nomic is 768
+        if "openai" in LOCAL_EMBEDDING_MODEL.lower() or LOCAL_EMBEDDING_MODEL.lower().startswith("text-embedding"):
+            EMBED_DIM = 1536
+        else:
+            EMBED_DIM = 768  # Default for nomic and other models
         _global_index = faiss.IndexFlatIP(EMBED_DIM)  # Inner product for cosine similarity
         _chunks_metadata = []
         _index_loaded = True
-        logging.info("Created new empty FAISS index")
+        logging.info(f"Created new empty FAISS index with dimension {EMBED_DIM}")
         return _global_index, _chunks_metadata
     
     try:
@@ -66,10 +71,16 @@ def load_index() -> Tuple[faiss.Index, List[Dict]]:
     except Exception as e:
         logging.error(f"Error loading FAISS index: {e}")
         # Create new empty index
-        EMBED_DIM = 768
+        from app.config import LOCAL_EMBEDDING_MODEL
+        # OpenAI embeddings are 1536, nomic is 768
+        if "openai" in LOCAL_EMBEDDING_MODEL.lower() or LOCAL_EMBEDDING_MODEL.lower().startswith("text-embedding"):
+            EMBED_DIM = 1536
+        else:
+            EMBED_DIM = 768  # Default for nomic and other models
         _global_index = faiss.IndexFlatIP(EMBED_DIM)
         _chunks_metadata = []
         _index_loaded = True
+        logging.info(f"Created new empty FAISS index with dimension {EMBED_DIM} after error")
         return _global_index, _chunks_metadata
 
 def save_index(index: faiss.Index, metadata: List[Dict]):
@@ -95,7 +106,8 @@ def add_chunks(embeddings: np.ndarray, chunks_metadata: List[Dict]):
     Add new chunks to the FAISS index.
     
     Args:
-        embeddings: numpy array of shape (n_chunks, 768) - must be normalized
+        embeddings: numpy array of shape (n_chunks, embed_dim) - must be normalized
+                    embed_dim is 768 for nomic, 1536 for OpenAI
         chunks_metadata: List of dicts with keys: content, vault_id, user_id, chunk_index
     """
     index, metadata = load_index()
@@ -161,7 +173,8 @@ def search(
     Search for similar chunks in FAISS index.
     
     Args:
-        query_embedding: numpy array of shape (1, 768) - must be normalized
+        query_embedding: numpy array of shape (1, embed_dim) - must be normalized
+                        embed_dim is 768 for nomic, 1536 for OpenAI
         user_id: Filter results by user_id
         top_k: Number of results to return
         vault_id: Optional filter by vault_id
