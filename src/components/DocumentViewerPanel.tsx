@@ -163,12 +163,12 @@ export function DocumentViewerPanel({
     return null;
   }
 
-  if (!documentId) {
-    return null;
-  }
-
   return (
-    <Sheet open={!!documentId} onOpenChange={onClose}>
+    <Sheet open={!!documentId} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
       <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col glass-card border-border/40 overflow-hidden h-full">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/30">
           <div className="flex items-center justify-between">

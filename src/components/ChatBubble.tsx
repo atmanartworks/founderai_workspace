@@ -85,14 +85,18 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
             key={`citation-${idx}`}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
+              console.log("Citation clicked:", citation);
               // Use callback if provided (for panel), otherwise navigate (fallback)
               if (onCitationClick) {
+                console.log("Calling onCitationClick callback");
                 onCitationClick(
                   citation.source_document_id,
                   citation.chunk_id,
                   citation.quoted_text
                 );
               } else {
+                console.log("No callback, navigating to document page");
                 // Fallback: navigate to full page (for backward compatibility)
                 const params = new URLSearchParams({
                   chunk_id: citation.chunk_id,

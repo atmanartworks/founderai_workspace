@@ -456,10 +456,12 @@ const Chat = () => {
                     fileUrls={message.file_urls}
                     citations={message.citations}
                     onCitationClick={(documentId, chunkId, quotedText) => {
+                      console.log("Citation clicked in Chat:", { documentId, chunkId, quotedText });
                       setViewingDocumentId(documentId);
                       setViewingChunkId(chunkId);
                       setViewingQuotedText(quotedText);
                       setDocumentViewerOpen(true);
+                      console.log("Document viewer state updated");
                     }}
                   />
                 ))}
