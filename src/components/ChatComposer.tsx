@@ -117,16 +117,22 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
   const models = [{ name: "ChatGPT" }, { name: "Gemini" }, { name: "Claude" }];
 
   return (
-    <div className="border-t border-border bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-2">
+    <div className="border-t border-border/30 bg-background/50 backdrop-blur-sm p-4 highlight-top">
+      <div className="max-w-4xl mx-auto space-y-3">
         {/* File Preview */}
         {files.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="flex flex-wrap gap-2">
             {files.map((file, index) => (
-              <div key={index} className="flex items-center gap-2 bg-muted px-3 py-1 rounded-lg text-sm">
-                <span>{file.name}</span>
-                <button onClick={() => handleFileRemove(index)} className="text-muted-foreground">
-                  <X className="w-4 h-4" />
+              <div 
+                key={index} 
+                className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-border/30 px-3 py-1.5 rounded-lg text-sm glass-card transition-smooth hover:bg-card/80"
+              >
+                <span className="text-foreground/90">{file.name}</span>
+                <button 
+                  onClick={() => handleFileRemove(index)} 
+                  className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                >
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
@@ -136,7 +142,12 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
         {/* Input Row */}
         <div className="flex items-end gap-2">
           {/* 📎 File Upload */}
-          <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={handleFileButtonClick}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="flex-shrink-0 hover:bg-accent/50 transition-smooth rounded-lg" 
+            onClick={handleFileButtonClick}
+          >
             <Paperclip className="w-5 h-5" />
           </Button>
 
@@ -149,7 +160,7 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={`Ask ${model} anything...`}
-              className="min-h-[60px] max-h-[200px] resize-none bg-card border-border pr-12"
+              className="min-h-[60px] max-h-[200px] resize-none bg-card/60 backdrop-blur-sm border-border/40 pr-12 text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-smooth rounded-xl glass-card"
             />
           </div>
 
@@ -158,7 +169,11 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
             onClick={toggleRecording}
             variant={isRecording ? "destructive" : "ghost"}
             size="icon"
-            className={`flex-shrink-0 transition-all ${isRecording ? "animate-pulse bg-red-500 text-white" : ""}`}
+            className={`flex-shrink-0 transition-all rounded-lg ${
+              isRecording 
+                ? "animate-pulse bg-destructive/90 text-white glow-primary" 
+                : "hover:bg-accent/50"
+            }`}
           >
             <Mic className="w-5 h-5" />
           </Button>
@@ -166,19 +181,23 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
           {/* 🤖 AI Model Selector */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="flex-shrink-0 relative">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="flex-shrink-0 relative hover:bg-accent/50 transition-smooth rounded-lg"
+              >
                 <Bot className="w-5 h-5" />
-                <span className="absolute -bottom-1 text-[10px] text-muted-foreground">{model}</span>
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground/70">{model}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-40 p-2">
+            <PopoverContent className="w-40 p-2 glass-card border-border/40">
               <div className="flex flex-col gap-1">
                 {models.map((m) => (
                   <Button
                     key={m.name}
                     variant={m.name === model ? "default" : "ghost"}
                     onClick={() => setModel(m.name)}
-                    className="flex justify-start gap-2 text-sm items-center"
+                    className="flex justify-start gap-2 text-sm items-center transition-smooth rounded-lg"
                   >
                     {m.name}
                   </Button>
@@ -191,7 +210,7 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
           <Button
             onClick={handleSend}
             disabled={!message.trim() && files.length === 0}
-            className="gradient-primary hover:opacity-90 transition-smooth flex-shrink-0"
+            className="gradient-primary hover:opacity-90 transition-smooth flex-shrink-0 rounded-lg glow-hover disabled:opacity-40 disabled:cursor-not-allowed"
             size="icon"
           >
             <Send className="w-5 h-5" />

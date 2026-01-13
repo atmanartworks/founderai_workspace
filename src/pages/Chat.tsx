@@ -275,32 +275,40 @@ const Chat = () => {
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Left Sidebar */}
       <aside
-        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}
+        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col backdrop-blur-sm`}
+        style={{
+          background: 'linear-gradient(180deg, hsl(220, 13%, 10%), hsl(220, 13%, 9%))',
+        }}
       >
-        <div className="p-4 border-b border-sidebar-border">
+        <div className="p-4 border-b border-sidebar-border/50 highlight-top">
           <div className="flex items-center gap-3 mb-6">
-            <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
-            <span className="text-xl font-bold golden-text">Founder GPT</span>
+            <div className="relative">
+              <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
+              <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />
+            </div>
+            <span className="text-xl font-semibold golden-text">Founder GPT</span>
           </div>
 
           <nav className="space-y-1">
-            {/* <Button 
+            <Button 
               variant="ghost" 
-              className="w-full justify-start"
-              onClick={() => navigate("/")}
+              className="w-full justify-start bg-sidebar-accent hover:bg-sidebar-accent/80 transition-smooth"
             >
-              <Home className="w-4 h-4 mr-2" />
-              Home
-            </Button> */}
-            <Button variant="ghost" className="w-full justify-start bg-sidebar-accent">
               <MessageSquare className="w-4 h-4 mr-2" />
               Chat
             </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate("/dashboard")}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start hover:bg-sidebar-accent/50 transition-smooth" 
+              onClick={() => navigate("/dashboard")}
+            >
               <Folder className="w-4 h-4 mr-2" />
               Vault
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start hover:bg-sidebar-accent/50 transition-smooth"
+            >
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
@@ -313,39 +321,41 @@ const Chat = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-7 w-7 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
               onClick={handleNewChat}
               title="New Chat"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {conversations.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-6">
                 No conversations yet
               </p>
             ) : (
               conversations.map((conv) => (
                 <div
                   key={conv.id}
-                  className={`flex items-center gap-1 group px-1 py-0.5 rounded-md transition-colors ${
-                    currentConversation?.id === conv.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
+                  className={`flex items-center gap-1 group px-2 py-1.5 rounded-lg transition-all ${
+                    currentConversation?.id === conv.id 
+                      ? "bg-sidebar-accent shadow-sm" 
+                      : "hover:bg-sidebar-accent/40"
                   }`}
                 >
                   <Button
                     variant="ghost"
-                    className="flex-1 justify-start text-sm text-left min-w-0 px-2 py-1.5 h-auto font-normal"
+                    className="flex-1 justify-start text-sm text-left min-w-0 px-2 py-1 h-auto font-normal hover:bg-transparent"
                     onClick={() => selectConversation(conv)}
                     title={conv.title}
                   >
-                    <span className="block truncate">{conv.title}</span>
+                    <span className="block truncate text-sidebar-foreground">{conv.title}</span>
                   </Button>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 hover:bg-sidebar-accent/60 rounded-md"
                       onClick={(e) => handleRenameClick(e, conv.id, conv.title)}
                       title="Rename"
                     >
@@ -354,11 +364,11 @@ const Chat = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 hover:bg-destructive/20 rounded-md"
                       onClick={(e) => handleDeleteConversation(e, conv.id)}
                       title="Delete"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      <Trash2 className="w-3.5 h-3.5 text-destructive/80" />
                     </Button>
                   </div>
                 </div>
@@ -367,22 +377,27 @@ const Chat = () => {
           </div>
         </div>
 
-        <div className="p-4 border-t border-sidebar-border space-y-2">
+        <div className="p-4 border-t border-sidebar-border/50 space-y-2 highlight-top">
           <Button 
             variant="ghost" 
-            className="w-full justify-start gap-2"
+            className="w-full justify-start gap-2 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
             onClick={() => navigate("/profile")}
           >
             {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+              <div className="relative">
+                <img src={avatarUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover ring-2 ring-sidebar-border/50" />
+                <div className="absolute inset-0 rounded-full bg-primary/20 blur-sm -z-10" />
+              </div>
             ) : (
-              <User className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full bg-sidebar-accent flex items-center justify-center">
+                <User className="w-3.5 h-3.5" />
+              </div>
             )}
-            <span className="truncate">{user?.email || "Loading..."}</span>
+            <span className="truncate text-sm">{user?.email || "Loading..."}</span>
           </Button>
           <Button 
             variant="ghost" 
-            className="w-full justify-start text-destructive hover:text-destructive"
+            className="w-full justify-start text-destructive/90 hover:text-destructive hover:bg-destructive/10 transition-smooth rounded-lg"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
@@ -392,31 +407,41 @@ const Chat = () => {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col bg-background">
         {/* Header */}
-        <header className="h-16 border-b border-border flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              <ChevronLeft className={`w-5 h-5 transition-transform ${sidebarOpen ? "" : "rotate-180"}`} />
+        <header className="h-16 border-b border-border/30 flex items-center justify-between px-6 backdrop-blur-sm glass highlight-top">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="lg:hidden hover:bg-accent/50 transition-smooth rounded-lg" 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
             </Button>
-            <h1 className="text-lg font-semibold">
-              {currentConversation?.title || "Select a conversation"}
+            <h1 className="text-lg font-medium text-foreground/90">
+              {currentConversation?.title || "New Chat"}
             </h1>
           </div>
-
         </header>
 
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
             {loading && messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">Loading...</div>
+              <div className="text-center text-muted-foreground py-12">
+                <div className="inline-block w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                <p>Loading...</p>
+              </div>
             ) : messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <h2 className="text-2xl font-semibold mb-2">
+              <div className="text-center py-16">
+                <div className="inline-block p-4 rounded-2xl bg-card/50 backdrop-blur-sm mb-6">
+                  <Bot className="w-12 h-12 text-primary/60" />
+                </div>
+                <h2 className="text-2xl font-semibold mb-3 text-foreground">
                   Hello! I'm your AI co-founder.
                 </h2>
-                <p>How can I help you build and scale your startup today?</p>
+                <p className="text-muted-foreground text-lg">How can I help you build and scale your startup today?</p>
               </div>
             ) : (
               <>

@@ -23,22 +23,24 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
   };
 
   return (
-    <div className={cn("flex gap-3 mb-6 animate-fade-in", isAI ? "flex-row" : "flex-row-reverse")}>
+    <div className={cn("flex gap-4 mb-6 animate-fade-in", isAI ? "flex-row" : "flex-row-reverse")}>
       <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-        isAI ? "bg-primary/10 text-primary" : "bg-card text-foreground border border-border"
+        "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-smooth",
+        isAI 
+          ? "bg-card/60 backdrop-blur-sm text-primary border border-border/30 shadow-sm" 
+          : "bg-accent/60 backdrop-blur-sm text-foreground border border-border/30 shadow-sm"
       )}>
-        {isAI ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+        {isAI ? <Bot className="w-4.5 h-4.5" /> : <User className="w-4.5 h-4.5" />}
       </div>
       
       <div className={cn("flex-1 max-w-[80%] md:max-w-[70%]", !isAI && "flex flex-col items-end")}>
         <div className={cn(
-          "rounded-2xl px-4 py-3 transition-smooth",
+          "rounded-2xl px-5 py-3.5 transition-smooth glass-card highlight-top",
           isAI 
-            ? "bg-card text-card-foreground" 
-            : "gradient-primary text-white"
+            ? "bg-card/80 text-card-foreground border-border/40" 
+            : "bg-accent/70 text-accent-foreground border-border/40"
         )}>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/95">{message}</p>
           
           {/* Display attached files */}
           {files.length > 0 && (
@@ -49,20 +51,20 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
                     <img
                       src={file.url}
                       alt={file.name}
-                      className="rounded-lg max-w-full h-auto max-h-96 object-contain"
+                      className="rounded-lg max-w-full h-auto max-h-96 object-contain border border-border/30 shadow-sm"
                     />
                     <a
                       href={file.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
-                        "flex items-center gap-2 p-2 rounded-md transition-colors group text-xs",
-                        isAI ? "bg-muted/50 hover:bg-muted" : "bg-white/10 hover:bg-white/20"
+                        "flex items-center gap-2 p-2.5 rounded-lg transition-all group text-xs glass hover:bg-accent/30",
+                        isAI ? "bg-muted/30" : "bg-accent/40"
                       )}
                     >
-                      <FileText className={cn("w-3 h-3", isAI ? "text-primary" : "text-white")} />
-                      <span className="flex-1 truncate">{file.name}</span>
-                      <Download className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <FileText className={cn("w-3.5 h-3.5", isAI ? "text-primary" : "text-foreground")} />
+                      <span className="flex-1 truncate text-foreground/90">{file.name}</span>
+                      <Download className="w-3.5 h-3.5 opacity-0 group-hover:opacity-70 transition-opacity text-muted-foreground" />
                     </a>
                   </div>
                 ) : (
@@ -72,13 +74,13 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                      "flex items-center gap-2 p-2 rounded-md transition-colors group",
-                      isAI ? "bg-muted/50 hover:bg-muted" : "bg-white/10 hover:bg-white/20"
+                      "flex items-center gap-2.5 p-2.5 rounded-lg transition-all group glass hover:bg-accent/30",
+                      isAI ? "bg-muted/30" : "bg-accent/40"
                     )}
                   >
-                    <FileText className={cn("w-4 h-4", isAI ? "text-primary" : "text-white")} />
-                    <span className="text-sm flex-1 truncate">{file.name}</span>
-                    <Download className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <FileText className={cn("w-4 h-4", isAI ? "text-primary" : "text-foreground")} />
+                    <span className="text-sm flex-1 truncate text-foreground/90">{file.name}</span>
+                    <Download className="w-4 h-4 opacity-0 group-hover:opacity-70 transition-opacity text-muted-foreground" />
                   </a>
                 )
               ))}
@@ -86,7 +88,7 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls }: ChatBubblePro
           )}
         </div>
         {timestamp && (
-          <span className="text-xs text-muted-foreground mt-1 px-2">{timestamp}</span>
+          <span className="text-xs text-muted-foreground/70 mt-2 px-2 block">{timestamp}</span>
         )}
       </div>
     </div>

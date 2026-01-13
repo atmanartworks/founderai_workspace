@@ -15,12 +15,15 @@ export const Navbar = () => {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+    <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30 glass highlight-top">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer group">
-            <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain group-hover:scale-110 transition-smooth" />
-            <span className="text-xl font-bold golden-text">Founder GPT</span>
+            <div className="relative">
+              <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain group-hover:scale-105 transition-smooth" />
+              <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <span className="text-xl font-semibold golden-text">Founder GPT</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -29,7 +32,7 @@ export const Navbar = () => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-smooth"
+                className="text-sm text-muted-foreground hover:text-foreground transition-smooth px-3 py-1.5 rounded-lg hover:bg-accent/30"
               >
                 {item.label}
               </button>
@@ -58,7 +61,7 @@ export const Navbar = () => {
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] bg-card border-border">
+            <SheetContent side="right" className="w-[300px] bg-card/90 backdrop-blur-xl border-border/30 glass-card">
               <div className="flex flex-col gap-6 mt-8">
                 {navItems.map((item) => (
                   <button
@@ -67,12 +70,12 @@ export const Navbar = () => {
                       navigate(item.path);
                       setIsOpen(false);
                     }}
-                    className="text-left text-lg text-muted-foreground hover:text-foreground transition-smooth"
+                    className="text-left text-lg text-muted-foreground hover:text-foreground transition-smooth px-3 py-2 rounded-lg hover:bg-accent/30"
                   >
                     {item.label}
                   </button>
                 ))}
-                <div className="flex flex-col gap-3 pt-6 border-t border-border">
+                <div className="flex flex-col gap-3 pt-6 border-t border-border/30">
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -88,7 +91,7 @@ export const Navbar = () => {
                       navigate("/chat");
                       setIsOpen(false);
                     }}
-                    className="gradient-primary hover:opacity-90 transition-smooth w-full"
+                    className="gradient-primary hover:opacity-90 transition-smooth w-full glow-hover"
                   >
                     Get Started
                   </Button>
