@@ -75,18 +75,24 @@ export function DocumentViewerPanel({
       }
 
       const result = await ragApi.getDocumentChunks(documentId, user.id);
-      console.log("DocumentViewerPanel: Loaded chunks", result);
+      console.log("DocumentViewerPanel: API response", result);
       setDocumentName(result.document_name);
       setChunks(result.chunks || []);
       
       if (result.chunks && result.chunks.length > 0) {
-        console.log(`DocumentViewerPanel: Loaded ${result.chunks.length} chunks`);
+        console.log(`DocumentViewerPanel: ✅ Loaded ${result.chunks.length} chunks`);
       } else {
-        console.warn("DocumentViewerPanel: No chunks found", {
+        console.warn("DocumentViewerPanel: ⚠️ No chunks found", {
+          document_id: documentId,
+          document_name: result.document_name,
           has_text_content: result.has_text_content,
           chunks_from_faiss: result.chunks_from_faiss,
           chunks_from_text: result.chunks_from_text
         });
+        
+        if (!result.has_text_content) {
+          console.error("DocumentViewerPanel: ❌ Document has no text_content. Please re-upload or process the document.");
+        }
       }
     } catch (error: any) {
       console.error("DocumentViewerPanel: Error loading document:", error);
