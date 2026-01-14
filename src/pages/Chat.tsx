@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
+import { ChatComposerEnhanced } from "@/components/ChatComposerEnhanced";
 import { DocumentViewerPanel } from "@/components/DocumentViewerPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ const Chat = () => {
   const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentModel, setCurrentModel] = useState("ChatGPT");
   
   // Document viewer panel state
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
@@ -472,8 +474,14 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Chat Composer */}
-        <ChatComposer onSend={handleSendMessage} />
+        {/* Chat Composer - Enhanced */}
+        <div className="border-t border-border/30 bg-background/50 backdrop-blur-sm p-4 md:p-6 highlight-top">
+          <ChatComposerEnhanced 
+            onSend={handleSendMessage}
+            model={currentModel}
+            onModelChange={setCurrentModel}
+          />
+        </div>
       </main>
 
       {/* Rename Dialog */}
