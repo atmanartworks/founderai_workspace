@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2, Bot, Menu } from "lucide-react";
+import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2, Bot, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ const Chat = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
@@ -403,15 +404,26 @@ const Chat = () => {
     }}>
       {/* Left Sidebar - Hidden on mobile, drawer on tablet, sidebar on desktop */}
       <aside
-        className={`${sidebarOpen ? "w-72" : "w-0"} hidden lg:flex lg:w-72 bg-black/40 backdrop-blur-md border-r border-sidebar-border/50 transition-all duration-300 flex-col`}
+        className={`${sidebarOpen ? "w-72" : "w-0"} hidden lg:flex ${sidebarOpen ? "lg:w-72" : "lg:w-0"} bg-black/40 backdrop-blur-md border-r border-sidebar-border/50 transition-all duration-300 flex-col overflow-hidden ${!sidebarOpen ? "border-r-0" : ""}`}
       >
-        <div className="p-4 border-b border-sidebar-border/50 highlight-top">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="relative">
-              <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
-              <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />
+        <div className={`p-4 border-b border-sidebar-border/50 highlight-top ${!sidebarOpen ? "hidden" : ""}`}>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
+                <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />
+              </div>
+              <span className="text-xl font-semibold golden-text">Founder GPT</span>
             </div>
-            <span className="text-xl font-semibold golden-text">Founder GPT</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
+              onClick={() => setSidebarOpen(false)}
+              title="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
 
           <nav className="space-y-1">
@@ -440,7 +452,7 @@ const Chat = () => {
           </nav>
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto">
+        <div className={`flex-1 p-4 overflow-y-auto ${!sidebarOpen ? "hidden" : ""}`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">CHAT HISTORY</h3>
             <Button
@@ -537,7 +549,7 @@ const Chat = () => {
         <header className="h-14 sm:h-16 border-b border-border/30 flex items-center justify-between px-3 sm:px-6 backdrop-blur-sm bg-black/40 highlight-top">
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Mobile Sidebar Toggle */}
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
               <SheetTrigger asChild>
                 <Button 
                   variant="ghost" 
@@ -571,7 +583,7 @@ const Chat = () => {
                         className="w-full justify-start hover:bg-sidebar-accent/50 transition-smooth" 
                         onClick={() => {
                           navigate("/dashboard");
-                          setSidebarOpen(false);
+                          setMobileSidebarOpen(false);
                         }}
                       >
                         <Folder className="w-4 h-4 mr-2" />
@@ -620,7 +632,7 @@ const Chat = () => {
                               className="flex-1 justify-start text-sm text-left min-w-0 px-2 py-1 h-auto font-normal hover:bg-transparent"
                               onClick={() => {
                                 selectConversation(conv);
-                                setSidebarOpen(false);
+                                setMobileSidebarOpen(false);
                               }}
                               title={conv.title}
                             >
@@ -658,7 +670,7 @@ const Chat = () => {
                       className="w-full justify-start gap-2 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
                       onClick={() => {
                         navigate("/profile");
-                        setSidebarOpen(false);
+                        setMobileSidebarOpen(false);
                       }}
                     >
                       {avatarUrl ? (
@@ -689,6 +701,18 @@ const Chat = () => {
               {currentConversation?.title || "New Chat"}
             </h1>
           </div>
+          {/* Desktop Sidebar Toggle - Show when sidebar is closed */}
+          {!sidebarOpen && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hidden lg:flex hover:bg-accent/50 transition-smooth rounded-lg" 
+              onClick={() => setSidebarOpen(true)}
+              title="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+          )}
         </header>
 
         {/* Chat Messages */}
