@@ -113,7 +113,61 @@ export const useConversations = (userId: string | null) => {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      
+      // Transform messages from backend format to frontend format
+      // Backend uses: user_message, assistant_message (one row per exchange)
+      // Frontend expects: content, is_ai (separate rows for user and AI)
+      const transformedMessages: Message[] = [];
+      
+      (data || []).forEach((msg: any) => {
+        // If message already has content/is_ai format (new format), use it directly
+        if (msg.content !== undefined && msg.is_ai !== undefined) {
+          transformedMessages.push({
+            id: msg.id,
+            conversation_id: msg.conversation_id,
+            content: msg.content,
+            is_ai: msg.is_ai,
+            created_at: msg.created_at,
+            file_urls: msg.file_urls,
+            citations: msg.citations,
+          });
+          return;
+        }
+        
+        // Transform from user_message/assistant_message format (old backend format)
+        // Create two separate messages: one for user, one for assistant
+        if (msg.user_message) {
+          transformedMessages.push({
+            id: `${msg.id}-user`,
+            conversation_id: msg.conversation_id,
+            content: msg.user_message,
+            is_ai: false,
+            created_at: msg.created_at,
+            file_urls: msg.file_urls || [],
+          });
+        }
+        
+        if (msg.assistant_message) {
+          // Extract citations from used_documents if available
+          let citations: CitationMetadata[] | undefined = undefined;
+          if (msg.citations && Array.isArray(msg.citations)) {
+            citations = msg.citations;
+          } else if (msg.used_documents?.citations && Array.isArray(msg.used_documents.citations)) {
+            citations = msg.used_documents.citations;
+          }
+          
+          transformedMessages.push({
+            id: `${msg.id}-assistant`,
+            conversation_id: msg.conversation_id,
+            content: msg.assistant_message,
+            is_ai: true,
+            created_at: msg.created_at,
+            citations: citations,
+          });
+        }
+      });
+      
+      setMessages(transformedMessages);
     } catch (error: any) {
       console.error("Error loading messages:", error);
       toast({
