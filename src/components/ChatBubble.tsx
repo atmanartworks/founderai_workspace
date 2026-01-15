@@ -140,19 +140,19 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
   };
 
   return (
-    <div className={cn("flex gap-4 mb-6 animate-fade-in", isAI ? "flex-row" : "flex-row-reverse")}>
+    <div className={cn("flex gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 animate-fade-in", isAI ? "flex-row" : "flex-row-reverse")}>
       <div className={cn(
-        "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-smooth",
+        "flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-smooth",
         isAI 
           ? "bg-black/50 backdrop-blur-md text-primary border border-border/40 shadow-sm" 
           : "bg-black/50 backdrop-blur-md text-foreground border border-border/40 shadow-sm"
       )}>
-        {isAI ? <Bot className="w-4.5 h-4.5" /> : <User className="w-4.5 h-4.5" />}
+        {isAI ? <Bot className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> : <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />}
       </div>
       
-      <div className={cn("flex-1 max-w-[80%] md:max-w-[70%]", !isAI && "flex flex-col items-end")}>
+      <div className={cn("flex-1 max-w-[85%] sm:max-w-[80%] md:max-w-[70%]", !isAI && "flex flex-col items-end")}>
         <div className={cn(
-          "rounded-xl px-5 py-3.5 transition-smooth glass-card highlight-top",
+          "rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-3.5 transition-smooth glass-card highlight-top",
           isAI 
             ? "bg-black/60 backdrop-blur-md text-foreground border-border/40" 
             : "bg-black/50 backdrop-blur-md text-foreground border-border/40"

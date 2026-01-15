@@ -94,7 +94,7 @@ const Login = () => {
         "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
       backgroundAttachment: "fixed",
     }}>
-      <Card className="w-full max-w-md p-8 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated">
+      <Card className="w-full max-w-md p-6 sm:p-8 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated mx-4 sm:mx-auto">
         <div className="flex flex-col items-center mb-8">
           <img src="/atman-logo.png" alt="ĀTMAN" className="w-32 h-32 object-contain mb-6" />
           <h1 className="text-3xl font-bold golden-text">Founder GPT</h1>

@@ -152,8 +152,8 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
 
 
   return (
-    <div className="border-t border-border/30 bg-transparent backdrop-blur-sm p-4 md:p-6 highlight-top">
-      <div className="max-w-4xl mx-auto space-y-3">
+    <div className="border-t border-border/30 bg-transparent backdrop-blur-sm p-3 sm:p-4 md:p-6 highlight-top">
+      <div className="max-w-4xl mx-auto space-y-2 sm:space-y-3">
         {/* File Preview */}
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -186,17 +186,17 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
             onKeyPress={handleKeyPress}
             placeholder={`Type your request...`}
             className={cn(
-              "w-full px-4 py-3 resize-none border-none",
-              "bg-transparent text-foreground text-sm",
+              "w-full px-3 sm:px-4 py-2.5 sm:py-3 resize-none border-none",
+              "bg-transparent text-foreground text-sm sm:text-base",
               "focus-visible:ring-0 focus-visible:ring-offset-0",
-              "placeholder:text-muted-foreground/60 min-h-[48px]",
+              "placeholder:text-muted-foreground/60 min-h-[44px] sm:min-h-[48px]",
               "transition-smooth"
             )}
             style={{ overflow: "hidden" }}
           />
 
           {/* Footer Buttons */}
-          <div className="flex items-center justify-between p-3 border-t border-border/30">
+          <div className="flex items-center justify-between p-2 sm:p-3 border-t border-border/30">
             <div className="flex items-center gap-2">
               {/* 📎 File Upload */}
               <Button

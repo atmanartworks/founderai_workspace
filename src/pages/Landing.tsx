@@ -81,18 +81,18 @@ const Landing = () => {
       <Hero />
       
       {/* Features Section */}
-      <section className="py-24 px-4">
+      <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="text-center mb-16 animate-fade-in">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16 animate-fade-in">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-4">
               Everything You Need to <span className="gradient-text">Build & Scale</span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Your AI co-founder provides expert guidance across every aspect of your startup journey
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {features.map((feature, index) => (
               <div key={index} style={{ animationDelay: `${index * 0.1}s` }}>
                 <FeatureCard {...feature} />
@@ -103,16 +103,16 @@ const Landing = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-4 bg-transparent">
+      <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6 bg-transparent">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-4">
               Trusted by <span className="gradient-text">Founders</span>
             </h2>
-            <p className="text-xl text-muted-foreground">See what entrepreneurs are saying</p>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-4">See what entrepreneurs are saying</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="p-6 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated">
                 <p className="text-foreground mb-4 leading-relaxed">"{testimonial.quote}"</p>
@@ -127,16 +127,16 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 px-4">
+      <section className="py-12 sm:py-16 md:py-24 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-4">
               Simple, <span className="gradient-text">Transparent Pricing</span>
             </h2>
-            <p className="text-xl text-muted-foreground">Choose the plan that fits your journey</p>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-4">Choose the plan that fits your journey</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {pricingPlans.map((plan, index) => (
               <Card 
                 key={index} 
@@ -180,9 +180,9 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12 px-4">
+      <footer className="border-t border-border py-8 sm:py-12 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3">
               <img src="/atman-logo.png" alt="ĀTMAN" className="w-16 h-16 object-contain" />
               <span className="text-xl font-bold golden-text">Founder GPT</span>

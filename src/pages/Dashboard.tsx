@@ -447,18 +447,18 @@ const VaultFiles = () => {
   }, [currentFolderId]);
 
   return (
-    <div className="min-h-screen bg-background p-8" style={{
+    <div className="min-h-screen bg-background p-4 sm:p-6 md:p-8" style={{
       backgroundImage: 
         "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
         "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
       backgroundAttachment: "fixed",
     }}>
       <Navbar />
-      <h1 className="text-3xl font-bold mb-6">File Explorer</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">File Explorer</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Panel - File Explorer */}
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="mb-4 space-y-3">
             <Button variant="outline" className="w-full justify-start text-sm" size="sm">
               📁 {fileCount} Files
@@ -489,7 +489,7 @@ const VaultFiles = () => {
               placeholder="Search files..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-border rounded-md px-2 py-1 text-sm w-full bg-background text-foreground"
+              className="border border-border rounded-md px-2 sm:px-3 py-1.5 sm:py-2 text-sm w-full bg-background text-foreground"
             />
           </div>
 

@@ -5,7 +5,8 @@ import { DocumentViewerPanel } from "@/components/DocumentViewerPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2, Bot } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { MessageSquare, Settings, User, Folder, ChevronLeft, LogOut, Plus, Trash2, Edit2, Bot, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -400,9 +401,9 @@ const Chat = () => {
         "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
       backgroundAttachment: "fixed",
     }}>
-      {/* Left Sidebar */}
+      {/* Left Sidebar - Hidden on mobile, drawer on tablet, sidebar on desktop */}
       <aside
-        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-black/40 backdrop-blur-md border-r border-sidebar-border/50 transition-all duration-300 flex flex-col`}
+        className={`${sidebarOpen ? "w-72" : "w-0"} hidden lg:flex lg:w-72 bg-black/40 backdrop-blur-md border-r border-sidebar-border/50 transition-all duration-300 flex-col`}
       >
         <div className="p-4 border-b border-sidebar-border/50 highlight-top">
           <div className="flex items-center gap-3 mb-6">
@@ -533,25 +534,166 @@ const Chat = () => {
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col bg-transparent">
         {/* Header */}
-        <header className="h-16 border-b border-border/30 flex items-center justify-between px-6 backdrop-blur-sm bg-black/40 highlight-top">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="lg:hidden hover:bg-accent/50 transition-smooth rounded-lg" 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
-            </Button>
-            <h1 className="text-lg font-medium text-foreground/90">
+        <header className="h-14 sm:h-16 border-b border-border/30 flex items-center justify-between px-3 sm:px-6 backdrop-blur-sm bg-black/40 highlight-top">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile Sidebar Toggle */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="lg:hidden hover:bg-accent/50 transition-smooth rounded-lg" 
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0 bg-black/60 backdrop-blur-md border-sidebar-border/50">
+                <div className="h-full flex flex-col">
+                  <div className="p-4 border-b border-sidebar-border/50 highlight-top">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="relative">
+                        <img src="/atman-logo.png" alt="ĀTMAN" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
+                        <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />
+                      </div>
+                      <span className="text-lg sm:text-xl font-semibold golden-text">Founder GPT</span>
+                    </div>
+
+                    <nav className="space-y-1">
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start bg-sidebar-accent hover:bg-sidebar-accent/80 transition-smooth"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start hover:bg-sidebar-accent/50 transition-smooth" 
+                        onClick={() => {
+                          navigate("/dashboard");
+                          setSidebarOpen(false);
+                        }}
+                      >
+                        <Folder className="w-4 h-4 mr-2" />
+                        Vault
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start hover:bg-sidebar-accent/50 transition-smooth"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Settings
+                      </Button>
+                    </nav>
+                  </div>
+
+                  <div className="flex-1 p-4 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">CHAT HISTORY</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
+                        onClick={handleNewChat}
+                        title="New Chat"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      {conversations.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">
+                          No conversations yet
+                        </p>
+                      ) : (
+                        conversations.map((conv) => (
+                          <div
+                            key={conv.id}
+                            className={`flex items-center gap-1 group px-2 py-1.5 rounded-lg transition-all ${
+                              currentConversation?.id === conv.id 
+                                ? "bg-sidebar-accent shadow-sm" 
+                                : "hover:bg-sidebar-accent/40"
+                            }`}
+                          >
+                            <Button
+                              variant="ghost"
+                              className="flex-1 justify-start text-sm text-left min-w-0 px-2 py-1 h-auto font-normal hover:bg-transparent"
+                              onClick={() => {
+                                selectConversation(conv);
+                                setSidebarOpen(false);
+                              }}
+                              title={conv.title}
+                            >
+                              <span className="block truncate text-sidebar-foreground">{conv.title}</span>
+                            </Button>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 hover:bg-sidebar-accent/60 rounded-md"
+                                onClick={(e) => handleRenameClick(e, conv.id, conv.title)}
+                                title="Rename"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 hover:bg-destructive/20 rounded-md"
+                                onClick={(e) => handleDeleteConversation(e, conv.id)}
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive/80" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 border-t border-sidebar-border/50 space-y-2 highlight-top">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 hover:bg-sidebar-accent/50 transition-smooth rounded-lg"
+                      onClick={() => {
+                        navigate("/profile");
+                        setSidebarOpen(false);
+                      }}
+                    >
+                      {avatarUrl ? (
+                        <div className="relative">
+                          <img src={avatarUrl} alt="Avatar" className="w-6 h-6 rounded-full object-cover ring-2 ring-sidebar-border/50" />
+                          <div className="absolute inset-0 rounded-full bg-primary/20 blur-sm -z-10" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-sidebar-accent flex items-center justify-center">
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                      <span className="truncate text-sm">{user?.email || "Loading..."}</span>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-destructive/90 hover:text-destructive hover:bg-destructive/10 transition-smooth rounded-lg"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <h1 className="text-base sm:text-lg font-medium text-foreground/90 truncate">
               {currentConversation?.title || "New Chat"}
             </h1>
           </div>
         </header>
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-4xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             {loading && messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">
                 <div className="inline-block w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
