@@ -71,7 +71,12 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
       <Navbar />
       <Hero />
       
@@ -98,7 +103,7 @@ const Landing = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-4 bg-card/30">
+      <section className="py-24 px-4 bg-transparent">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -109,7 +114,7 @@ const Landing = () => {
           
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="p-6 bg-card border-border">
+              <Card key={index} className="p-6 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated">
                 <p className="text-foreground mb-4 leading-relaxed">"{testimonial.quote}"</p>
                 <div>
                   <p className="font-semibold text-foreground">{testimonial.name}</p>
@@ -135,7 +140,7 @@ const Landing = () => {
             {pricingPlans.map((plan, index) => (
               <Card 
                 key={index} 
-                className={`p-8 relative ${plan.popular ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+                className={`p-8 relative bg-black/60 backdrop-blur-md shadow-elevated ${plan.popular ? 'border-primary ring-2 ring-primary/20' : 'border-border/40'}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 gradient-primary rounded-full text-sm text-white font-medium">

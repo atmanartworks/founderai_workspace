@@ -6,6 +6,7 @@ export interface ChatRequest {
   message: string;
   user_id: string;
   top_k?: number;
+  active_document_id?: string | null;  // Conversation-level active document context
 }
 
 export interface CitationMetadata {
@@ -36,8 +37,14 @@ export interface VaultFile {
   created_at: string;
 }
 
+export interface StreamChatCallbacks {
+  onToken: (text: string) => void;
+  onDone: (metadata: { citations?: CitationMetadata[]; source?: string; error?: string }) => void;
+  onError?: (error: Error) => void;
+}
+
 export const ragApi = {
-  // Send chat message with RAG
+  // Send chat message with RAG (non-streaming)
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
     const response = await fetch(`${RAG_API_URL}/api/chat/message`, {
       method: "POST",
@@ -53,6 +60,117 @@ export const ragApi = {
     }
 
     return response.json();
+  },
+
+  // Stream chat message with SSE
+  async streamMessage(request: ChatRequest, callbacks: StreamChatCallbacks): Promise<void> {
+    try {
+      const response = await fetch(`${RAG_API_URL}/api/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || error.message || JSON.stringify(error);
+        } catch {
+          // If JSON parsing fails, use status text
+          errorMessage = response.statusText || `HTTP ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Split by double newline (SSE event separator)
+        const events = buffer.split("\n\n");
+        // Keep the last incomplete event in buffer
+        buffer = events.pop() || "";
+
+        for (const event of events) {
+          if (!event.trim()) continue;
+
+          // Parse SSE event
+          const lines = event.split("\n");
+          let eventType = "";
+          let eventData = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              eventType = line.replace("event: ", "").trim();
+            } else if (line.startsWith("data: ")) {
+              eventData = line.replace("data: ", "").trim();
+            }
+          }
+
+          if (eventType === "token" && eventData) {
+            try {
+              const { text } = JSON.parse(eventData);
+              if (text) {
+                callbacks.onToken(text);
+              }
+            } catch (e) {
+              console.error("Error parsing token data:", e, eventData);
+            }
+          } else if (eventType === "done" && eventData) {
+            try {
+              const metadata = JSON.parse(eventData);
+              callbacks.onDone(metadata);
+            } catch (e) {
+              console.error("Error parsing done data:", e, eventData);
+            }
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        const lines = buffer.split("\n");
+        let eventType = "";
+        let eventData = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            eventType = line.replace("event: ", "").trim();
+          } else if (line.startsWith("data: ")) {
+            eventData = line.replace("data: ", "").trim();
+          }
+        }
+
+        if (eventType === "done" && eventData) {
+          try {
+            const metadata = JSON.parse(eventData);
+            callbacks.onDone(metadata);
+          } catch (e) {
+            console.error("Error parsing final done data:", e);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Stream error:", error);
+      if (callbacks.onError) {
+        callbacks.onError(error as Error);
+      } else {
+        callbacks.onDone({ error: (error as Error).message });
+      }
+    }
   },
 
   // Upload file to vault
@@ -90,16 +208,31 @@ export const ragApi = {
 
   // Embed document
   async embedDocument(vaultId: string): Promise<any> {
-    const response = await fetch(`${RAG_API_URL}/api/embeddings/embed-document/${vaultId}`, {
-      method: "POST",
-    });
+    try {
+      const response = await fetch(`${RAG_API_URL}/api/embeddings/embed-document/${vaultId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to embed document");
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || error.message || JSON.stringify(error);
+        } catch {
+          errorMessage = response.statusText || `HTTP ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error: any) {
+      console.error(`Error embedding document ${vaultId}:`, error);
+      // Re-throw with more context
+      throw new Error(`Failed to embed document: ${error.message || error.toString()}`);
     }
-
-    return response.json();
   },
 
   // Delete file from vault

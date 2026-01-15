@@ -144,18 +144,18 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
       <div className={cn(
         "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-smooth",
         isAI 
-          ? "bg-card/60 backdrop-blur-sm text-primary border border-border/30 shadow-sm" 
-          : "bg-accent/60 backdrop-blur-sm text-foreground border border-border/30 shadow-sm"
+          ? "bg-black/50 backdrop-blur-md text-primary border border-border/40 shadow-sm" 
+          : "bg-black/50 backdrop-blur-md text-foreground border border-border/40 shadow-sm"
       )}>
         {isAI ? <Bot className="w-4.5 h-4.5" /> : <User className="w-4.5 h-4.5" />}
       </div>
       
       <div className={cn("flex-1 max-w-[80%] md:max-w-[70%]", !isAI && "flex flex-col items-end")}>
         <div className={cn(
-          "rounded-2xl px-5 py-3.5 transition-smooth glass-card highlight-top",
+          "rounded-xl px-5 py-3.5 transition-smooth glass-card highlight-top",
           isAI 
-            ? "bg-card/80 text-card-foreground border-border/40" 
-            : "bg-accent/70 text-accent-foreground border-border/40"
+            ? "bg-black/60 backdrop-blur-md text-foreground border-border/40" 
+            : "bg-black/50 backdrop-blur-md text-foreground border-border/40"
         )}>
           {renderMessageWithCitations(message)}
           
@@ -232,11 +232,11 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
               <div className="space-y-5">
                 {/* Metadata Grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card p-4 border border-border/30 rounded-lg highlight-top">
+                  <div className="glass-card p-4 border border-border/40 rounded-xl highlight-top bg-black/50 backdrop-blur-md">
                     <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-2">Chunk ID</h4>
                     <p className="text-base text-foreground/90 font-medium">{selectedCitation.chunk_id}</p>
                   </div>
-                  <div className="glass-card p-4 border border-border/30 rounded-lg highlight-top">
+                  <div className="glass-card p-4 border border-border/40 rounded-xl highlight-top bg-black/50 backdrop-blur-md">
                     <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-2">Relevance Score</h4>
                     <p className="text-base text-foreground/90 font-medium">{selectedCitation.score.toFixed(3)}</p>
                   </div>
@@ -245,7 +245,7 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
                 {/* Quoted Text */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-3">Quoted Text</h4>
-                  <div className="glass-card border border-border/30 rounded-lg p-5 highlight-top bg-card/50">
+                  <div className="glass-card border border-border/40 rounded-xl p-5 highlight-top bg-black/50 backdrop-blur-md">
                     <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.quoted_text}
                     </p>
@@ -255,7 +255,7 @@ export const ChatBubble = ({ message, isAI, timestamp, fileUrls, citations = [],
                 {/* Full Chunk Content */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide mb-3">Full Chunk Content</h4>
-                  <div className="glass-card border border-border/30 rounded-lg p-5 max-h-80 overflow-y-auto highlight-top bg-card/40">
+                  <div className="glass-card border border-border/40 rounded-xl p-5 max-h-80 overflow-y-auto highlight-top bg-black/50 backdrop-blur-md">
                     <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
                       {selectedCitation.chunk_content}
                     </p>

@@ -15,7 +15,7 @@ export const Navbar = () => {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/30 glass highlight-top">
+    <nav className="sticky top-0 z-50 bg-black/40 backdrop-blur-md border-b border-border/30 highlight-top">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer group">
@@ -61,7 +61,7 @@ export const Navbar = () => {
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] bg-card/90 backdrop-blur-xl border-border/30 glass-card">
+            <SheetContent side="right" className="w-[300px] bg-black/60 backdrop-blur-md border-border/40 glass-card">
               <div className="flex flex-col gap-6 mt-8">
                 {navItems.map((item) => (
                   <button

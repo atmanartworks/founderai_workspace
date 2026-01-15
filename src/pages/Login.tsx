@@ -88,8 +88,13 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 bg-card border-border">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
+      <Card className="w-full max-w-md p-8 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated">
         <div className="flex flex-col items-center mb-8">
           <img src="/atman-logo.png" alt="ĀTMAN" className="w-32 h-32 object-contain mb-6" />
           <h1 className="text-3xl font-bold golden-text">Founder GPT</h1>
@@ -105,7 +110,7 @@ const Login = () => {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="bg-background border-border"
+              className="bg-black/40 backdrop-blur-sm border-border/40"
             />
           </div>
 
@@ -117,7 +122,7 @@ const Login = () => {
               placeholder="Enter your password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="bg-background border-border"
+              className="bg-black/40 backdrop-blur-sm border-border/40"
             />
           </div>
 

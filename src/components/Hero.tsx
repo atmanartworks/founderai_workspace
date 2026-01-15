@@ -48,7 +48,7 @@ export const Hero = () => {
             </div>
           </div>
           
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          <div className="bg-black/60 backdrop-blur-md border border-border/40 rounded-xl p-6 space-y-4 animate-fade-in shadow-elevated" style={{ animationDelay: "0.2s" }}>
             <div className="flex items-center gap-2 mb-6">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="text-sm text-muted-foreground">Live Preview</span>

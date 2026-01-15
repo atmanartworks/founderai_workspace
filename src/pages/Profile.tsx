@@ -238,7 +238,12 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background p-4" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button
@@ -248,10 +253,10 @@ const Profile = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-3xl font-bold gradient-text">Profile Settings</h1>
+          <h1 className="text-3xl font-bold gradient-text drop-shadow-sm">Profile Settings</h1>
         </div>
 
-        <Card className="p-6 bg-card border-border">
+        <Card className="p-6 bg-black/60 backdrop-blur-md border-border/40 shadow-elevated">
           {!emailVerified && (
             <Alert className="mb-6 bg-yellow-500/10 border-yellow-500/20">
               <XCircle className="h-4 w-4 text-yellow-500" />
@@ -322,7 +327,7 @@ const Profile = () => {
                 placeholder="Enter your name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="bg-background border-border"
+                className="bg-black/40 backdrop-blur-sm border-border/40"
               />
             </div>
 
@@ -346,7 +351,7 @@ const Profile = () => {
                   placeholder="Enter new password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-background border-border"
+                  className="bg-black/40 backdrop-blur-sm border-border/40"
                 />
               </div>
 
@@ -358,7 +363,7 @@ const Profile = () => {
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-background border-border"
+                  className="bg-black/40 backdrop-blur-sm border-border/40"
                 />
               </div>
 

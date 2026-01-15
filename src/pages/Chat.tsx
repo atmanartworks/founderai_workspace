@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatComposer } from "@/components/ChatComposer";
-import { ChatComposerEnhanced } from "@/components/ChatComposerEnhanced";
 import { DocumentViewerPanel } from "@/components/DocumentViewerPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,13 +25,15 @@ const Chat = () => {
   const [renamingConversationId, setRenamingConversationId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [currentModel, setCurrentModel] = useState("ChatGPT");
   
   // Document viewer panel state
   const [documentViewerOpen, setDocumentViewerOpen] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
   const [viewingChunkId, setViewingChunkId] = useState<string | null>(null);
   const [viewingQuotedText, setViewingQuotedText] = useState<string | null>(null);
+  
+  // Active document context (conversation-level document memory)
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
 
   const {
     conversations,
@@ -148,6 +149,8 @@ const Chat = () => {
 
     // Upload files to RAG vault if any
     let uploadedFiles: string[] = [];
+    let lastUploadedVaultId: string | null = null; // Track the last uploaded document ID
+    
     if (files && files.length > 0) {
       toast({
         title: "Uploading files...",
@@ -188,16 +191,41 @@ const Chat = () => {
           const result = await ragApi.uploadFile(user.id, file);
           // Auto-embed the document after upload
           if (result.vault_id) {
-            await ragApi.embedDocument(result.vault_id);
+            // Track the last uploaded vault ID
+            lastUploadedVaultId = result.vault_id;
+            
+            try {
+              console.log(`Embedding document ${result.vault_id}...`);
+              const embedResult = await ragApi.embedDocument(result.vault_id);
+              console.log(`Successfully embedded document ${result.vault_id}:`, embedResult);
+              // Set as active document when uploaded and embedded
+              setActiveDocumentId(result.vault_id);
+              console.log(`Set active document ID: ${result.vault_id}`);
+            } catch (embedError: any) {
+              console.error(`Failed to embed document ${result.vault_id}:`, embedError);
+              // Still set as active document - the backend might have extracted text_content
+              // even if FAISS embedding failed
+              setActiveDocumentId(result.vault_id);
+              // Show warning but don't fail the upload
+              const errorMsg = embedError.message || embedError.toString() || "Unknown error";
+              toast({
+                title: "Upload Successful",
+                description: `File uploaded. Embedding failed: ${errorMsg}. The document may still work if text was extracted.`,
+                variant: "destructive",
+              });
+            }
           }
           return result.storage_path;
         });
         uploadedFiles = await Promise.all(uploadPromises);
         
-        toast({
-          title: "Success",
-          description: "Files uploaded and embedded successfully",
-        });
+        // Check if any files were successfully uploaded
+        if (uploadedFiles.length > 0) {
+          toast({
+            title: "Success",
+            description: `${uploadedFiles.length} file(s) uploaded successfully`,
+          });
+        }
       } catch (error: any) {
         toast({
           title: "Upload Error",
@@ -218,17 +246,107 @@ const Chat = () => {
       return;
     }
 
-    // Get AI response from RAG backend
+    // Get AI response from RAG backend using streaming
     try {
-      const response = await ragApi.sendMessage({
-        conversation_id: conversation.id,
-        message: content,
-        user_id: user.id,
-        top_k: 10, // Retrieve more chunks for detailed answers
-      });
+      // Create a placeholder message that will be updated as tokens stream in
+      const streamingMessage = await addMessage("", true, undefined, conversation.id);
+      if (!streamingMessage) {
+        toast({
+          title: "Error",
+          description: "Failed to create streaming message",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Add AI response with citations (citations are handled in ChatBubble component)
-      await addMessage(response.response, true, undefined, conversation.id, response.citations);
+      let accumulatedText = "";
+      let finalCitations: CitationMetadata[] | undefined = undefined;
+
+      // Stream the response
+      // Use lastUploadedVaultId if we just uploaded files, otherwise use activeDocumentId state
+      const documentIdToUse = lastUploadedVaultId || activeDocumentId;
+      console.log(`Sending message with active_document_id: ${documentIdToUse} (from upload: ${lastUploadedVaultId}, from state: ${activeDocumentId})`);
+      await ragApi.streamMessage(
+        {
+          conversation_id: conversation.id,
+          message: content,
+          user_id: user.id,
+          top_k: 10, // Retrieve more chunks for detailed answers
+          active_document_id: documentIdToUse, // Pass active document context (use uploaded ID if available)
+        },
+        {
+          onToken: (text: string) => {
+            // Append token to accumulated text
+            accumulatedText += text;
+            
+            // Update the message in real-time
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === streamingMessage.id
+                  ? { ...msg, content: accumulatedText }
+                  : msg
+              )
+            );
+            
+            // Auto-scroll to bottom as tokens arrive
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 0);
+          },
+          onDone: (metadata) => {
+            // Update message with final text and citations
+            if (metadata.error) {
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === streamingMessage.id
+                    ? { ...msg, content: `⚠️ Error: ${metadata.error}` }
+                    : msg
+                )
+              );
+            } else {
+              finalCitations = metadata.citations;
+              setMessages((prevMessages) =>
+                prevMessages.map((msg) =>
+                  msg.id === streamingMessage.id
+                    ? { ...msg, content: accumulatedText, citations: finalCitations }
+                    : msg
+                )
+              );
+              
+              // Update the message in the database
+              supabase
+                .from("messages")
+                .update({
+                  content: accumulatedText,
+                })
+                .eq("id", streamingMessage.id)
+                .then(() => {
+                  // Also update citations if we have them
+                  if (finalCitations && finalCitations.length > 0) {
+                    // Citations are stored in the message's citations field
+                    // The ChatBubble component will handle displaying them
+                  }
+                });
+            }
+          },
+          onError: (error: Error) => {
+            console.error("Streaming error:", error);
+            const errorMessage = error.message || error.toString() || "Unknown error";
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === streamingMessage.id
+                  ? { ...msg, content: `⚠️ Sorry, I encountered an error: ${errorMessage}\n\nPlease make sure the RAG backend is running at http://127.0.0.1:8000` }
+                  : msg
+              )
+            );
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          },
+        }
+      );
     } catch (error: any) {
       console.error("RAG API Error:", error);
       await addMessage(
@@ -276,13 +394,15 @@ const Chat = () => {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-background">
+    <div className="h-screen flex overflow-hidden bg-background" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
       {/* Left Sidebar */}
       <aside
-        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col backdrop-blur-sm`}
-        style={{
-          background: 'linear-gradient(180deg, hsl(220, 13%, 10%), hsl(220, 13%, 9%))',
-        }}
+        className={`${sidebarOpen ? "w-72" : "w-0"} lg:w-72 bg-black/40 backdrop-blur-md border-r border-sidebar-border/50 transition-all duration-300 flex flex-col`}
       >
         <div className="p-4 border-b border-sidebar-border/50 highlight-top">
           <div className="flex items-center gap-3 mb-6">
@@ -411,9 +531,9 @@ const Chat = () => {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col bg-background">
+      <main className="flex-1 flex flex-col bg-transparent">
         {/* Header */}
-        <header className="h-16 border-b border-border/30 flex items-center justify-between px-6 backdrop-blur-sm glass highlight-top">
+        <header className="h-16 border-b border-border/30 flex items-center justify-between px-6 backdrop-blur-sm bg-black/40 highlight-top">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
@@ -439,10 +559,10 @@ const Chat = () => {
               </div>
             ) : messages.length === 0 ? (
               <div className="text-center py-16">
-                <div className="inline-block p-4 rounded-2xl bg-card/50 backdrop-blur-sm mb-6">
+                <div className="inline-block p-4 rounded-xl bg-black/50 backdrop-blur-md mb-6 border border-border/40">
                   <Bot className="w-12 h-12 text-primary/60" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-3 text-foreground">
+                <h2 className="text-2xl font-semibold mb-3 text-foreground drop-shadow-sm">
                   Hello! I'm your AI co-founder.
                 </h2>
                 <p className="text-muted-foreground text-lg">How can I help you build and scale your startup today?</p>
@@ -459,6 +579,8 @@ const Chat = () => {
                     citations={message.citations}
                     onCitationClick={(documentId, chunkId, quotedText) => {
                       console.log("Citation clicked in Chat:", { documentId, chunkId, quotedText });
+                      // Set active document when citation is clicked
+                      setActiveDocumentId(documentId);
                       setViewingDocumentId(documentId);
                       setViewingChunkId(chunkId);
                       setViewingQuotedText(quotedText);
@@ -474,14 +596,8 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Chat Composer - Enhanced */}
-        <div className="border-t border-border/30 bg-background/50 backdrop-blur-sm p-4 md:p-6 highlight-top">
-          <ChatComposerEnhanced 
-            onSend={handleSendMessage}
-            model={currentModel}
-            onModelChange={setCurrentModel}
-          />
-        </div>
+        {/* Chat Composer */}
+        <ChatComposer onSend={handleSendMessage} />
       </main>
 
       {/* Rename Dialog */}
@@ -520,6 +636,7 @@ const Chat = () => {
             setViewingDocumentId(null);
             setViewingChunkId(null);
             setViewingQuotedText(null);
+            // Keep activeDocumentId even when viewer closes (conversation-level memory)
           }}
         />
       )}

@@ -258,7 +258,7 @@ export function DocumentViewerPanel({
                       "glass-card p-5 rounded-xl border transition-all duration-300",
                       isHighlighted
                         ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10"
-                        : "border-border/30 bg-card/80"
+                        : "border-border/40 bg-black/50 backdrop-blur-md"
                     )}
                   >
                     <div className="flex items-start gap-3 mb-3">

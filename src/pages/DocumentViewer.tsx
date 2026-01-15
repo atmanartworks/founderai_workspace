@@ -169,7 +169,12 @@ export default function DocumentViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center" style={{
+        backgroundImage: 
+          "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+          "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+        backgroundAttachment: "fixed",
+      }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Loading document...</p>
@@ -180,7 +185,12 @@ export default function DocumentViewer() {
 
   if (chunks.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background" style={{
+        backgroundImage: 
+          "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+          "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+        backgroundAttachment: "fixed",
+      }}>
         <div className="container mx-auto px-4 py-8">
           <Button
             variant="ghost"
@@ -190,7 +200,7 @@ export default function DocumentViewer() {
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          <div className="glass-card p-8 text-center">
+          <div className="glass-card p-8 text-center bg-black/60 backdrop-blur-md border-border/40 rounded-xl">
             <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-semibold mb-2">{documentName || "Document"}</h2>
             <p className="text-muted-foreground">
@@ -203,7 +213,12 @@ export default function DocumentViewer() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="mb-6 flex items-center gap-4">
@@ -241,7 +256,7 @@ export default function DocumentViewer() {
                   "glass-card p-6 rounded-xl border transition-all duration-300",
                   isHighlighted
                     ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10"
-                    : "border-border/30 bg-card/80"
+                    : "border-border/40 bg-black/50 backdrop-blur-md"
                 )}
               >
                 <div className="flex items-start gap-3 mb-3">

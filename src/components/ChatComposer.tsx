@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { Paperclip, Mic, Send, X, Bot } from "lucide-react";
-// import { FaGoogle, FaRobot } from "react-icons/fa6"; // Gemini & fallback
-import { SiOpenai, SiAnthropic } from "react-icons/si"; // ChatGPT & Claude
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Paperclip, Mic, Send, X, ArrowUpIcon } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { cn } from "@/lib/utils"; // optional utility if you have it in your project
+import { cn } from "@/lib/utils";
 
 interface ChatComposerProps {
   onSend: (message: string, files?: File[]) => Promise<void> | void;
@@ -35,13 +32,51 @@ declare global {
   }
 }
 
+interface AutoResizeProps {
+  minHeight: number;
+  maxHeight?: number;
+}
+
+function useAutoResizeTextarea({ minHeight, maxHeight }: AutoResizeProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = useCallback(
+    (reset?: boolean) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      if (reset) {
+        textarea.style.height = `${minHeight}px`;
+        return;
+      }
+
+      textarea.style.height = `${minHeight}px`; // reset first
+      const newHeight = Math.max(
+        minHeight,
+        Math.min(textarea.scrollHeight, maxHeight ?? Infinity)
+      );
+      textarea.style.height = `${newHeight}px`;
+    },
+    [minHeight, maxHeight]
+  );
+
+  useEffect(() => {
+    if (textareaRef.current) textareaRef.current.style.height = `${minHeight}px`;
+  }, [minHeight]);
+
+  return { textareaRef, adjustHeight };
+}
+
 export const ChatComposer = ({ onSend }: ChatComposerProps) => {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [model, setModel] = useState("ChatGPT");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { textareaRef, adjustHeight } = useAutoResizeTextarea({
+    minHeight: 48,
+    maxHeight: 150,
+  });
 
   // --- Speech Recognition setup ---
   useEffect(() => {
@@ -59,6 +94,7 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
           transcript += event.results[i][0].transcript;
         }
         setMessage(transcript);
+        adjustHeight();
       };
 
       recognition.onerror = (event: any) => {
@@ -76,6 +112,7 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
       await onSend(message, files);
       setMessage("");
       setFiles([]);
+      adjustHeight(true); // Reset height
     }
   };
 
@@ -113,11 +150,9 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
     fileInputRef.current?.click();
   };
 
-  // --- AI Model List ---
-  const models = [{ name: "ChatGPT" }, { name: "Gemini" }, { name: "Claude" }];
 
   return (
-    <div className="border-t border-border/30 bg-background/50 backdrop-blur-sm p-4 highlight-top">
+    <div className="border-t border-border/30 bg-transparent backdrop-blur-sm p-4 md:p-6 highlight-top">
       <div className="max-w-4xl mx-auto space-y-3">
         {/* File Preview */}
         {files.length > 0 && (
@@ -139,82 +174,71 @@ export const ChatComposer = ({ onSend }: ChatComposerProps) => {
           </div>
         )}
 
-        {/* Input Row */}
-        <div className="flex items-end gap-2">
-          {/* 📎 File Upload */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="flex-shrink-0 hover:bg-accent/50 transition-smooth rounded-lg" 
-            onClick={handleFileButtonClick}
-          >
-            <Paperclip className="w-5 h-5" />
-          </Button>
+        {/* Input Box - Dark Glassmorphism Style */}
+        <div className="relative bg-black/60 backdrop-blur-md rounded-xl border border-border/40 glass-card shadow-elevated">
+          <Textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              adjustHeight();
+            }}
+            onKeyPress={handleKeyPress}
+            placeholder={`Type your request...`}
+            className={cn(
+              "w-full px-4 py-3 resize-none border-none",
+              "bg-transparent text-foreground text-sm",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "placeholder:text-muted-foreground/60 min-h-[48px]",
+              "transition-smooth"
+            )}
+            style={{ overflow: "hidden" }}
+          />
 
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileChange} />
-
-          {/* 🧠 Textarea */}
-          <div className="flex-1 relative">
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={`Ask ${model} anything...`}
-              className="min-h-[60px] max-h-[200px] resize-none bg-card/60 backdrop-blur-sm border-border/40 pr-12 text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-smooth rounded-xl glass-card"
-            />
-          </div>
-
-          {/* 🎙️ Voice Button */}
-          <Button
-            onClick={toggleRecording}
-            variant={isRecording ? "destructive" : "ghost"}
-            size="icon"
-            className={`flex-shrink-0 transition-all rounded-lg ${
-              isRecording 
-                ? "animate-pulse bg-destructive/90 text-white glow-primary" 
-                : "hover:bg-accent/50"
-            }`}
-          >
-            <Mic className="w-5 h-5" />
-          </Button>
-
-          {/* 🤖 AI Model Selector */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="flex-shrink-0 relative hover:bg-accent/50 transition-smooth rounded-lg"
+          {/* Footer Buttons */}
+          <div className="flex items-center justify-between p-3 border-t border-border/30">
+            <div className="flex items-center gap-2">
+              {/* 📎 File Upload */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-foreground/80 hover:text-foreground hover:bg-accent/50 transition-smooth rounded-lg"
+                onClick={handleFileButtonClick}
               >
-                <Bot className="w-5 h-5" />
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground/70">{model}</span>
+                <Paperclip className="w-4 h-4" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-40 p-2 glass-card border-border/40">
-              <div className="flex flex-col gap-1">
-                {models.map((m) => (
-                  <Button
-                    key={m.name}
-                    variant={m.name === model ? "default" : "ghost"}
-                    onClick={() => setModel(m.name)}
-                    className="flex justify-start gap-2 text-sm items-center transition-smooth rounded-lg"
-                  >
-                    {m.name}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileChange} />
 
-          {/* 🚀 Send Button */}
-          <Button
-            onClick={handleSend}
-            disabled={!message.trim() && files.length === 0}
-            className="gradient-primary hover:opacity-90 transition-smooth flex-shrink-0 rounded-lg glow-hover disabled:opacity-40 disabled:cursor-not-allowed"
-            size="icon"
-          >
-            <Send className="w-5 h-5" />
-          </Button>
+              {/* 🎙️ Voice Button */}
+              <Button
+                onClick={toggleRecording}
+                variant={isRecording ? "destructive" : "ghost"}
+                size="icon"
+                className={cn(
+                  "text-foreground/80 hover:text-foreground transition-smooth rounded-lg",
+                  isRecording && "animate-pulse bg-destructive/90 text-white"
+                )}
+              >
+                <Mic className="w-4 h-4" />
+              </Button>
+
+            </div>
+
+            {/* 🚀 Send Button */}
+            <Button
+              onClick={handleSend}
+              disabled={!message.trim() && files.length === 0}
+              className={cn(
+                "flex items-center gap-1 px-3 py-2 rounded-lg transition-all",
+                "bg-muted text-muted-foreground",
+                "disabled:opacity-40 disabled:cursor-not-allowed",
+                "hover:bg-muted/80 shadow-sm hover:shadow-md"
+              )}
+            >
+              <ArrowUpIcon className="w-4 h-4" />
+              <span className="sr-only">Send</span>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

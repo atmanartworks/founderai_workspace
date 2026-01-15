@@ -128,7 +128,8 @@ class EmbeddingService:
         short: bool = False, 
         steps: bool = False,
         context: str = None,
-        question: str = None
+        question: str = None,
+        no_documents: bool = False
     ) -> str:
         """
         Uses OpenAI to generate responses. Returns text or error string.
@@ -155,10 +156,72 @@ class EmbeddingService:
             
             format_text = "\n".join(format_instructions) if format_instructions else "- Provide a VERY comprehensive, detailed answer (300-500+ words) with extensive technical depth, practical examples, implementation details, and real-world considerations"
             
-            system_message = """You are FounderGPT, a senior AI Tech Lead working on this project.
+            # Update system message based on whether documents are available
+            if no_documents or not context or context.strip() == "":
+                document_instruction = """
+YOU ARE IN MODE_GENERAL.
+
+ANSWER MODE: MODE_GENERAL
+- Answer using general knowledge
+- Do NOT mention documents
+- Do NOT mention chunks
+- Do NOT include citations
+- Always add at the end: "Source: Generated"
+
+CRITICAL RULES:
+- Never guess which mode you are in - you are explicitly in MODE_GENERAL
+- Never mix modes - use ONLY general knowledge
+- Never mention documents, chunks, or sources
+- Never include citations
+- Always end with "Source: Generated"
+- NEVER say "your message is empty" or "your message is blank" - you have a valid question
+- NEVER say "It seems like your message" - always answer the question directly
+- If you see a question, answer it immediately using general knowledge
+
+FORMAT:
+- Answer the question naturally and directly
+- At the END of your answer, add: "Source: Generated"
+- Example: "The total number of states in India is 28 states. Source: Generated"
+- Do NOT start with "Based on the provided documents" or "Based on documents"
+- Do NOT mention documents, chunks, or sources anywhere in your answer
+- Do NOT say the message is empty or blank - always answer the question provided"""
+            else:
+                document_instruction = """
+STRICT RULES FOR DOCUMENT-GROUNDED ANSWERS:
+- Only use information from the provided RAG context
+- Do NOT mention documents, PDFs, filenames, or sources in your final answer
+- If information is partially available, infer a reasonable answer like a real tech lead"""
+            
+            system_message = f"""You are FounderGPT powered by OpenAI.
+
+CONVERSATION AWARENESS RULES (STRICT):
+
+1. The user may ask vague or incomplete questions.
+2. If a document was uploaded or selected earlier in the conversation:
+   - Assume references like "this document", "this file", "it", or "this" refer to that document.
+3. Do NOT ask the user to restate the question if intent is clear.
+4. Behave like ChatGPT when interpreting user intent.
+
+DOCUMENT USAGE RULES:
+
+- If document text is available, use it automatically.
+- If document text is NOT available, clearly explain why.
+- Never generate generic answers for document-specific questions.
+
+GENERAL KNOWLEDGE RULES:
+
+- If the question is unrelated to documents, answer normally.
+- Clearly label such answers as: "Source: Generated"
+
+NEVER:
+- Say "I don't know the context" if conversation context exists.
+- Say "please provide the document" if one was already uploaded.
+- Fall back to generic explanations for document questions.
 
 This project uses a Retrieval-Augmented Generation (RAG) architecture.
-You must answer using retrieved context and chat history.
+{document_instruction}
+
+You must answer using retrieved context and chat history when available.
 
 CORE IDENTITY:
 - Name: FounderGPT
@@ -224,16 +287,48 @@ CLARIFICATION LOGIC:
 - Out of scope: State what's missing clearly but still provide what you can infer
 - When user asks "explain more" or "more details", expand significantly on the previous answer from conversation history"""
             
-            user_prompt = f"""RELEVANT CONTEXT FROM RAG SYSTEM (includes conversation history if available):
-{context if context else "No document context available."}
+            # Handle no_documents flag - must clearly label when not based on documents
+            if no_documents or not context or context.strip() == "":
+                context_label = "No document context available."
+                # For general knowledge questions, add format instruction
+                format_instruction_suffix = "\n\nREMINDER: You are in MODE_GENERAL. At the END of your answer, add 'Source: Generated'. Do NOT mention documents, chunks, or sources."
+            else:
+                context_label = context
+                format_instruction_suffix = ""
+            
+            # Validate question is not empty
+            if not question or not question.strip():
+                logging.error("MODE_GENERAL: Question is empty, cannot generate answer")
+                return "Please enter a valid question. Source: Generated"
+            
+            user_prompt = f"""YOU ARE IN MODE_GENERAL.
 
-USER QUESTION:
+RELEVANT CONTEXT FROM RAG SYSTEM (includes conversation history if available):
+{context_label}
+
+=== USER QUESTION (YOU MUST ANSWER THIS) ===
 {question}
+=== END OF QUESTION ===
+
+YOUR TASK: Answer the question above using general knowledge.
+
+CRITICAL REMINDERS:
+- You are in MODE_GENERAL - answer using general knowledge only
+- You have a VALID QUESTION above (between the === markers) - answer it directly
+- Do NOT mention documents, chunks, or sources
+- Do NOT include citations
+- Always add at the end: "Source: Generated"
+- Never mix modes - you are explicitly in MODE_GENERAL
+- NEVER say "your message is empty" or "your message is blank" - you have a question above
+- NEVER say "It seems like your message" - always answer the question
+- Answer the question IMMEDIATELY using general knowledge
+- If the question is "how many states in india", answer: "The total number of states in India is 28 states. Source: Generated"
+- If you see "QUESTION TO ANSWER:" prefix, that is the actual question - answer it
 
 FORMAT REQUIREMENTS:
 {format_text}
 
-IMPORTANT: Provide a VERY detailed, comprehensive answer. Aim for 300-500+ words for substantial questions. Include technical depth, practical examples, implementation details, and real-world considerations. Explain the "why" behind each technology choice, not just "what". Be thorough and comprehensive.
+IMPORTANT: Provide a VERY detailed, comprehensive answer. Aim for 300-500+ words for substantial questions. Include technical depth, practical examples, implementation details, and real-world considerations. Explain the "why" behind each technology choice, not just "what". Be thorough and comprehensive.{format_instruction_suffix}
 
 STRICT INSTRUCTIONS:
 1. Use ONLY the provided RAG context and chat history above

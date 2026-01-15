@@ -9,13 +9,14 @@ app = FastAPI(title="RAG Backend")
 
 # CORS (adjust origins as needed)
 # Note: allow_credentials cannot be True with allow_origins=["*"]
-# For Vercel, we allow all origins without credentials
+# For development and production, allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins (works for both localhost and production)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
+    allow_credentials=False,
 )
 
 # Health check endpoint

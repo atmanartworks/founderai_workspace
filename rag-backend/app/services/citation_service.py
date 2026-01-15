@@ -157,6 +157,16 @@ class CitationService:
         Returns:
             Tuple of (answer_with_citations, citation_metadata)
         """
+        # Validate chunk relevance scores before proceeding
+        chunk_scores = [c.get("score", 0.0) for c in chunks if c.get("score") is not None]
+        if chunk_scores:
+            avg_score = sum(chunk_scores) / len(chunk_scores)
+            max_score = max(chunk_scores)
+            # If all chunks have very low relevance, they're likely irrelevant
+            if avg_score < 0.3 and max_score < 0.4:
+                logging.warning(f"CitationService: Chunks have low relevance scores (avg: {avg_score:.3f}, max: {max_score:.3f}) - likely irrelevant to question '{question[:50]}...'")
+                return "This question is outside the scope of the available documents.", []
+        
         # Build context with chunk identifiers
         context_parts = []
         citation_metadata = []
@@ -192,7 +202,8 @@ class CitationService:
             citation_counter += 1
         
         if not context_parts:
-            return "No relevant context found.", []
+            # No relevant chunks found - return message indicating answer not in documents
+            return "The answer is not available in the uploaded documents.", []
         
         context = "\n\n---\n\n".join(context_parts)
         
@@ -209,40 +220,76 @@ class CitationService:
         format_text = "\n".join(format_instructions) if format_instructions else "- Provide a comprehensive, detailed answer"
         
         # Prompt LLM to generate answer with citations
-        system_prompt = f"""You are FounderGPT, a citation-aware AI assistant that generates answers with interactive citations.
+        system_prompt = f"""You are FounderGPT powered by OpenAI.
 
-CRITICAL CITATION RULES:
-1. Every factual statement derived from documents MUST include a citation reference like [1], [2]
-2. Only cite information that comes from the provided context chunks
+CONVERSATION AWARENESS RULES (STRICT):
+
+1. The user may ask vague or incomplete questions.
+2. If a document was uploaded or selected earlier in the conversation:
+   - Assume references like "this document", "this file", "it", or "this" refer to that document.
+3. Do NOT ask the user to restate the question if intent is clear.
+4. Behave like ChatGPT when interpreting user intent.
+
+YOU ARE IN MODE_DOCUMENT.
+
+ANSWER MODE: MODE_DOCUMENT
+- Use ONLY the provided document chunks
+- Include citations [1], [2], etc. for every factual statement from documents
+- Mention documents clearly when relevant
+- If answer is not in chunks, say: "The answer is not available in the uploaded documents."
+
+CRITICAL RULES:
+- Never guess which mode you are in - you are explicitly in MODE_DOCUMENT
+- Never mix modes - use ONLY document chunks
+- Never fabricate citations - only cite chunks that exist [1] through [{len(context_parts)}]
+- Never say a message is blank if text exists
+
+STRICT CITATION RULES (NON-NEGOTIABLE):
+1. ONLY cite information that comes DIRECTLY from the provided context chunks
+2. Every factual statement derived from documents MUST include a citation reference like [1], [2]
 3. Use the citation number that corresponds to the chunk number in the context (chunks are numbered [1], [2], [3], etc.)
 4. If multiple chunks support a statement, cite all relevant ones: [1][2] or [1,2]
 5. DO NOT cite general knowledge - only cite document-specific information
-6. DO NOT invent citations - only use citations 1 through the number of chunks provided
-7. Place citations immediately after the statement they support
+6. DO NOT invent citations - only use citations 1 through {len(context_parts)}
+7. NEVER create fake citations - if information is general knowledge, do NOT cite it
+8. NEVER imply sources if none were used - only cite when information comes from chunks
+9. Place citations immediately after the statement they support
+10. If information is not in the chunks, say: "The answer is not available in the uploaded documents."
 
 FORMAT REQUIREMENTS:
 {format_text}
 
 OUTPUT FORMAT:
 - Write clean, professional text in natural paragraphs
-- Include inline citations like [1] or [2][3] immediately after factual statements
-- Do NOT include citation metadata, sources list, or "according to document" phrases
+- Include inline citations like [1] or [2][3] immediately after factual statements FROM DOCUMENTS
+- You MAY mention "the uploaded documents" or "the provided documents" when relevant
 - Do NOT use markdown formatting (no **, *, #, etc.)
 - Write in clean plain text like ChatGPT
 - Follow the format requirements above strictly
 
 EXAMPLE:
-"The project uses React for the frontend [1] and FastAPI for the backend [2]. The deployment is handled on Vercel [1]. The application follows a clean architecture pattern [2]."
+"Based on the uploaded documents, the project uses React for the frontend [1] and FastAPI for the backend [2]. The deployment is handled on Vercel [1]. The application follows a clean architecture pattern [2]."
 
-Remember: Every factual claim from documents must have a citation. General knowledge does not need citations. Citations must be inline, not at the end."""
+Remember: You are in MODE_DOCUMENT. Use ONLY document chunks. Include citations. Never invent citations."""
 
-        user_prompt = f"""CONTEXT CHUNKS (numbered for citation):
+        user_prompt = f"""YOU ARE IN MODE_DOCUMENT.
+
+CONTEXT CHUNKS (numbered for citation):
 {context}
 
 QUESTION:
 {question}
 
-Generate a comprehensive answer with inline citations [1], [2], etc. immediately after each factual statement derived from the context chunks above. Use only the citation numbers that correspond to the chunk numbers in the context."""
+Generate a comprehensive answer with inline citations [1], [2], etc. immediately after each factual statement derived from the context chunks above. Use only the citation numbers that correspond to the chunk numbers in the context.
+
+CRITICAL REMINDERS:
+- You are in MODE_DOCUMENT - use ONLY the provided document chunks
+- Include citations [1], [2], etc. for every factual statement from documents
+- If answer is not in chunks, say: "The answer is not available in the uploaded documents."
+- Only cite information that comes DIRECTLY from the context chunks
+- Do NOT cite general knowledge
+- Do NOT invent citations
+- Never mix modes - you are explicitly in MODE_DOCUMENT"""
 
         try:
             response = openai_client.chat.completions.create(
@@ -262,16 +309,17 @@ Generate a comprehensive answer with inline citations [1], [2], etc. immediately
             used_citation_ids = set([int(n) for n in citation_numbers if n.isdigit()])
             
             # Filter to only include citations that were actually used in the answer
-            # If no citations found, return all (they might be referenced implicitly)
+            # STRICT RULE: Only return citations that were explicitly referenced
             if used_citation_ids:
                 used_citations = [
                     c for c in citation_metadata 
                     if c["citation_id"] in used_citation_ids
                 ]
             else:
-                # If LLM didn't use citations, return all citations anyway
-                # (they were provided in context, so they're relevant)
-                used_citations = citation_metadata
+                # If LLM didn't use citations, return empty list
+                # STRICT RULE: Never return citations that weren't explicitly used
+                used_citations = []
+                logging.warning("LLM generated answer but did not use any citations - returning empty citations list")
             
             logging.info(f"Generated answer with {len(used_citations)} citations from {len(citation_metadata)} available chunks")
             

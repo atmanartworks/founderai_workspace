@@ -447,7 +447,12 @@ const VaultFiles = () => {
   }, [currentFolderId]);
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-screen bg-background p-8" style={{
+      backgroundImage: 
+        "radial-gradient(at 0% 0%, hsl(220 15% 10% / 0.3) 0px, transparent 50%), " +
+        "radial-gradient(at 100% 100%, hsl(217 91% 60% / 0.05) 0px, transparent 50%)",
+      backgroundAttachment: "fixed",
+    }}>
       <Navbar />
       <h1 className="text-3xl font-bold mb-6">File Explorer</h1>
 
@@ -612,7 +617,7 @@ const VaultFiles = () => {
                   </div>
                 ) : filePreviewUrl ? (
                   // Image preview
-                  <div className="p-4 flex items-center justify-center bg-white min-h-[400px]">
+                  <div className="p-4 flex items-center justify-center bg-black/30 backdrop-blur-sm min-h-[400px] rounded-lg border border-border/30">
                     <img 
                       src={filePreviewUrl} 
                       alt={selectedFile.original_name}

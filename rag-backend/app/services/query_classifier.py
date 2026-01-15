@@ -17,17 +17,39 @@ def classify_query(query: str) -> Dict[str, bool]:
     """
     query_lower = query.lower().strip()
     
-    # Simple greetings - no RAG needed
+    # General knowledge questions - check BEFORE greetings to avoid false positives
+    # These should use MODE B (general knowledge with "Source: Generated" label)
+    general_knowledge_patterns = [
+        r'how many\s+(states|countries|cities|people|users|items|provinces|districts)',
+        r'how many\s+(.*?)\s+(states|countries|cities|people|users|items|provinces|districts)',
+        r'how many\s+(.*?)\s+in\s+(india|usa|china|japan|germany|france|uk|australia|england|canada|brazil|russia|inda|america)',
+        r'what is the\s+(population|capital|area|size|number|count)',
+        r'what is the\s+(population|capital|area|size|number|count)\s+of\s+(india|usa|china|japan|germany|france|uk|australia|england|canada|brazil|russia|inda|america)',
+        r'when was\s+(.*?)\s+(founded|created|born|established)',
+        r'who is\s+(.*?)\s+(president|prime minister|ceo|founder)',
+        r'what is\s+(.*?)\s+(capital|currency|language|flag)',
+        r'what is the\s+(.*?)\s+of\s+(india|usa|china|japan|germany|france|uk|australia|england|canada|brazil|russia|inda|america)',
+    ]
+    is_general_knowledge = any(re.search(pattern, query_lower) for pattern in general_knowledge_patterns)
+    
+    # Also check for common general knowledge question patterns
+    if not is_general_knowledge:
+        # Check if it's a "how many X" question (general knowledge)
+        if re.search(r'^how many\s+', query_lower):
+            is_general_knowledge = True
+    
+    # Simple greetings - no RAG needed (but only if NOT a general knowledge question)
     greetings = [
         r'^(hi|hello|hey|greetings|good morning|good afternoon|good evening)[\s!.,]*$',
         r'^(hi|hello|hey)\s+(there|everyone|all)[\s!.,]*$',
-        r'^how\s+(are\s+you|do\s+you\s+do)[\s?.,]*$',
+        r'^how\s+(are\s+you|do\s+you\s+do)[\s?.,]*$',  # Only matches "how are you" or "how do you do", not "how many"
         r'^what\'?s\s+up[\s?.,]*$',
         r'^thanks?\s*(you|a\s+lot|so\s+much)?[\s!.,]*$',
         r'^(thank\s+you|thanks)[\s!.,]*$',
     ]
     
-    is_greeting = any(re.match(pattern, query_lower) for pattern in greetings)
+    # Only treat as greeting if it's NOT a general knowledge question
+    is_greeting = not is_general_knowledge and any(re.match(pattern, query_lower) for pattern in greetings)
     
     # Very short queries (1-2 words) that aren't questions
     is_very_short = len(query.split()) <= 2 and not any(word in query_lower for word in ['what', 'how', 'why', 'when', 'where', 'who', 'which', '?'])
@@ -48,6 +70,14 @@ def classify_query(query: str) -> Dict[str, bool]:
     ])
     has_question_mark = '?' in query
     
+    # Out-of-scope queries - clearly not related to project/technical domain
+    out_of_scope_keywords = [
+        'headache', 'cure', 'medicine', 'health', 'medical', 'doctor', 'symptom', 'disease',
+        'recipe', 'cooking', 'food', 'restaurant', 'weather', 'forecast', 'sports', 'game',
+        'movie', 'music', 'celebrity', 'news', 'politics', 'religion', 'philosophy'
+    ]
+    is_out_of_scope = any(keyword in query_lower for keyword in out_of_scope_keywords)
+    
     # File listing queries - special handling (just listing, not overview)
     # Note: "overview" and "summary" queries should go through RAG to get content from all files
     is_file_list_query = any(phrase in query_lower for phrase in [
@@ -62,14 +92,16 @@ def classify_query(query: str) -> Dict[str, bool]:
     is_question = has_question_word or has_question_mark
     
     # Determine if RAG is needed
-    # RAG needed if: it's a question AND not a simple greeting
-    needs_rag = is_question and not is_greeting and not is_very_short and not is_conversational
+    # RAG needed if: it's a question AND not a simple greeting AND not out of scope
+    needs_rag = is_question and not is_greeting and not is_very_short and not is_conversational and not is_out_of_scope
     
     return {
         "needs_rag": needs_rag,
         "is_greeting": is_greeting,
         "is_conversational": is_conversational,
         "is_question": is_question,
-        "is_file_list_query": is_file_list_query
+        "is_file_list_query": is_file_list_query,
+        "is_out_of_scope": is_out_of_scope,
+        "is_general_knowledge": is_general_knowledge
     }
 
